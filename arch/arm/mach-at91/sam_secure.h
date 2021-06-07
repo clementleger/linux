@@ -9,7 +9,7 @@
 #include <linux/arm-smccc.h>
 
 /* Secure Monitor mode APIs */
-#define SAMA5_SMC_SIP_L2X0_WRITE_REG	0x100
+#define SAMA5_SMC_SIP_L2X0_WRITE_CTRL	0x100
 
 void __init sam_secure_init(void);
 bool sam_linux_is_normal_world(void);

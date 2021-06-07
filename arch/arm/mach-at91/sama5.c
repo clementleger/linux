@@ -9,11 +9,34 @@
 #include <linux/of.h>
 #include <linux/of_platform.h>
 
+#include <asm/hardware/cache-l2x0.h>
 #include <asm/mach/arch.h>
 #include <asm/mach/map.h>
+#include <asm/outercache.h>
 #include <asm/system_misc.h>
 
 #include "generic.h"
+#include "sam_secure.h"
+
+void sama5_l2c310_write_sec(unsigned long val, unsigned reg)
+{
+	struct arm_smccc_res res;
+
+	if (reg == L2X0_CTRL) {
+		res = sam_smccc_call(SAMA5_SMC_SIP_L2X0_WRITE_CTRL, reg, val);
+		if (res.a0 != SAMA5_SMC_SIP_RETURN_SUCCESS)
+			pr_warn("PL310 write ctrl failed\n");
+	} else {
+		WARN_ONCE(1, "PL310 ignoring write to reg 0x%x\n", reg);
+	}
+}
+
+static void __init sama5_secure_cache_init(void)
+{
+	sam_secure_init();
+	if (sam_linux_is_normal_world())
+		outer_cache.write_sec = sama5_l2c310_write_sec;
+}
 
 static void __init sama5_dt_device_init(void)
 {
@@ -29,6 +52,7 @@ static const char *const sama5_dt_board_compat[] __initconst = {
 DT_MACHINE_START(sama5_dt, "Atmel SAMA5")
 	/* Maintainer: Atmel */
 	.init_machine	= sama5_dt_device_init,
+	.init_early	= sama5_secure_cache_init,
 	.dt_compat	= sama5_dt_board_compat,
 MACHINE_END
 
@@ -40,6 +64,7 @@ static const char *const sama5_alt_dt_board_compat[] __initconst = {
 DT_MACHINE_START(sama5_alt_dt, "Atmel SAMA5")
 	/* Maintainer: Atmel */
 	.init_machine	= sama5_dt_device_init,
+	.init_early	= sama5_secure_cache_init,
 	.dt_compat	= sama5_alt_dt_board_compat,
 	.l2c_aux_mask	= ~0UL,
 MACHINE_END
@@ -58,6 +83,7 @@ static const char *const sama5d2_compat[] __initconst = {
 DT_MACHINE_START(sama5d2, "Atmel SAMA5")
 	/* Maintainer: Atmel */
 	.init_machine	= sama5d2_init,
+	.init_early	= sama5_secure_cache_init,
 	.dt_compat	= sama5d2_compat,
 	.l2c_aux_mask	= ~0UL,
 MACHINE_END
