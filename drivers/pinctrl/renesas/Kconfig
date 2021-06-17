@@ -7,7 +7,7 @@ menu "Renesas pinctrl drivers"
 
 config PINCTRL_RENESAS
 	bool "Renesas SoC pin control support" if COMPILE_TEST && !(ARCH_RENESAS || SUPERH)
-	default y if ARCH_RENESAS || SUPERH
+	default y if ARCH_RENESAS || ARCH_RZN1 || SUPERH
 	select PINCTRL_PFC_EMEV2 if ARCH_EMEV2
 	select PINCTRL_PFC_R8A73A4 if ARCH_R8A73A4
 	select PINCTRL_PFC_R8A7740 if ARCH_R8A7740
@@ -239,7 +239,7 @@ config PINCTRL_RZN1
 	bool "pin control support for RZ/N1"
 	depends on OF
 	depends on ARCH_RZN1 || COMPILE_TEST
-	select GENERIC_PINCONF
+	select PINCTRL_SH_PFC
 	help
 	  This selects pinctrl driver for Renesas RZ/N1 devices.
 
