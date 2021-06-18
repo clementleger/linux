@@ -146,6 +146,19 @@ static struct at91_twi_pdata sam9x60_config = {
 	.has_clear_cmd = true,
 };
 
+static struct at91_twi_pdata lan966x_config = {
+	.clk_max_div = 7,
+	.clk_offset = 3,
+	.clk_brsrcclk = true,
+	.has_unre_flag = true,
+	.has_alt_cmd = true,
+	.has_hold_field = true,
+	.has_dig_filtr = true,
+	.has_adv_dig_filtr = true,
+	.has_ana_filtr = true,
+	.has_clear_cmd = true,
+};
+
 static const struct of_device_id atmel_twi_dt_ids[] = {
 	{
 		.compatible = "atmel,at91rm9200-i2c",
@@ -174,6 +187,9 @@ static const struct of_device_id atmel_twi_dt_ids[] = {
 	}, {
 		.compatible = "microchip,sam9x60-i2c",
 		.data = &sam9x60_config,
+	}, {
+		.compatible = "microchip,lan966x-i2c",
+		.data = &lan966x_config,
 	}, {
 		/* sentinel */
 	}

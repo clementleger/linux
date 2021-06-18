@@ -115,6 +115,7 @@
 struct at91_twi_pdata {
 	unsigned clk_max_div;
 	unsigned clk_offset;
+	bool clk_brsrcclk;
 	bool has_unre_flag;
 	bool has_alt_cmd;
 	bool has_hold_field;
