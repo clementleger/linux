@@ -148,7 +148,7 @@ static struct at91_twi_pdata sam9x60_config = {
 
 static struct at91_twi_pdata lan966x_config = {
 	.clk_max_div = 7,
-	.clk_offset = 3,
+	.clk_offset = 0,
 	.clk_brsrcclk = true,
 	.has_unre_flag = true,
 	.has_alt_cmd = true,
