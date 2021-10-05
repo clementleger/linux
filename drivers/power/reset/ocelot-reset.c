@@ -20,6 +20,7 @@ struct reset_props {
 	u32 protect_reg;
 	u32 vcore_protect;
 	u32 if_si_owner_bit;
+	u32 reset;
 };
 
 struct ocelot_reset_context {
@@ -30,8 +31,6 @@ struct ocelot_reset_context {
 };
 
 #define BIT_OFF_INVALID				32
-
-#define SOFT_CHIP_RST BIT(0)
 
 #define ICPU_CFG_CPU_SYSTEM_CTRL_GENERAL_CTRL	0x24
 #define IF_SI_OWNER_MASK			GENMASK(1, 0)
@@ -60,7 +59,7 @@ static int ocelot_restart_handle(struct notifier_block *this,
 
 	pr_emerg("Resetting SoC\n");
 
-	writel(SOFT_CHIP_RST, ctx->base);
+	writel(ctx->props->reset, ctx->base);
 
 	pr_emerg("Unable to restart system\n");
 	return NOTIFY_DONE;
@@ -105,6 +104,7 @@ static const struct reset_props reset_props_jaguar2 = {
 	.protect_reg     = 0x20,
 	.vcore_protect   = BIT(2),
 	.if_si_owner_bit = 6,
+	.reset           = BIT(0),
 };
 
 static const struct reset_props reset_props_luton = {
@@ -112,6 +112,7 @@ static const struct reset_props reset_props_luton = {
 	.protect_reg     = 0x20,
 	.vcore_protect   = BIT(2),
 	.if_si_owner_bit = BIT_OFF_INVALID, /* n/a */
+	.reset           = BIT(0),
 };
 
 static const struct reset_props reset_props_ocelot = {
@@ -119,6 +120,7 @@ static const struct reset_props reset_props_ocelot = {
 	.protect_reg     = 0x20,
 	.vcore_protect   = BIT(2),
 	.if_si_owner_bit = 4,
+	.reset           = BIT(0),
 };
 
 static const struct reset_props reset_props_sparx5 = {
@@ -126,6 +128,15 @@ static const struct reset_props reset_props_sparx5 = {
 	.protect_reg     = 0x84,
 	.vcore_protect   = BIT(10),
 	.if_si_owner_bit = 6,
+	.reset           = BIT(0),
+};
+
+static const struct reset_props reset_props_lan966x = {
+	.syscon		 = "microchip,lan966x-cpu-syscon",
+	.protect_reg     = 0x88,
+	.vcore_protect   = BIT(5),
+	.reset           = BIT(1),
+	.if_si_owner_bit = BIT_OFF_INVALID, /* n/a */
 };
 
 static const struct of_device_id ocelot_reset_of_match[] = {
@@ -141,6 +152,9 @@ static const struct of_device_id ocelot_reset_of_match[] = {
 	}, {
 		.compatible = "microchip,sparx5-chip-reset",
 		.data = &reset_props_sparx5
+	}, {
+		.compatible = "microchip,lan966x-chip-reset",
+		.data = &reset_props_lan966x
 	},
 	{ /*sentinel*/ }
 };
