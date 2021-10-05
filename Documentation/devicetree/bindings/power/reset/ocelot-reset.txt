@@ -9,7 +9,8 @@ microchip Sparx5 armv8 SoC's.
 Required Properties:
 
  - compatible: "mscc,ocelot-chip-reset", "mscc,luton-chip-reset",
-   "mscc,jaguar2-chip-reset" or "microchip,sparx5-chip-reset"
+   "mscc,jaguar2-chip-reset", "microchip,sparx5-chip-reset" or
+   "microchip,lan966x-chip-reset"
 
 Example:
 	reset@1070008 {
