@@ -16,6 +16,7 @@
 
 struct mux {
 	struct mux_control *control;
+	u32 delay_us;
 
 	bool do_not_deselect;
 };
@@ -25,7 +26,7 @@ static int i2c_mux_select(struct i2c_mux_core *muxc, u32 chan)
 	struct mux *mux = i2c_mux_priv(muxc);
 	int ret;
 
-	ret = mux_control_select(mux->control, chan);
+	ret = mux_control_select_delay(mux->control, chan, mux->delay_us);
 	mux->do_not_deselect = ret < 0;
 
 	return ret;
@@ -106,6 +107,7 @@ static int i2c_mux_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, muxc);
 
+	of_property_read_u32(np, "settle-time-us", &mux->delay_us);
 	muxc->mux_locked = of_property_read_bool(np, "mux-locked");
 
 	for_each_child_of_node(np, child) {
