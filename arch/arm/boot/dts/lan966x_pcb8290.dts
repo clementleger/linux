@@ -1,0 +1,142 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * lan966x_pcb8290.dts - Device Tree file for PCB8290
+ */
+/dts-v1/;
+#include "lan9668_hsio_mode_0.dtsi"
+
+/ {
+	model = "Microchip SVB LAN9668";
+	compatible = "microchip,lan966x-sunrise", "microchip,lan966x";
+
+	gpio-restart {
+		compatible = "gpio-restart";
+		gpios = <&gpio 56 GPIO_ACTIVE_LOW>;
+		priority = <200>;
+	};
+};
+
+&phy_reset {
+	external-phy-reset-gpios = <&gpio 53 GPIO_ACTIVE_LOW>;
+};
+
+&lan966x_mdio0 {
+	status = "okay";
+
+	phy0: ethernet-phy@7 {
+		reg = <7>;
+	};
+
+	phy1: ethernet-phy@8 {
+		reg = <8>;
+	};
+
+	phy2: ethernet-phy@9 {
+		reg = <9>;
+	};
+
+	phy3: ethernet-phy@10 {
+		reg = <10>;
+	};
+
+	phy4: ethernet-phy@15 {
+		reg = <15>;
+	};
+
+	phy5: ethernet-phy@16 {
+		reg = <16>;
+	};
+
+	phy6: ethernet-phy@17 {
+		reg = <17>;
+	};
+
+	phy7: ethernet-phy@18 {
+		reg = <18>;
+	};
+};
+
+&lan966x_switch {
+	status = "okay";
+};
+
+&serdes {
+	status = "okay";
+};
+
+&port0 {
+	status = "okay";
+	phy-handle = <&phy0>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
+
+&port1 {
+	status = "okay";
+	phy-handle = <&phy1>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
+
+&port2 {
+	status = "okay";
+	phy-handle = <&phy2>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
+
+&port3 {
+	status = "okay";
+	phy-handle = <&phy3>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
+
+&port4 {
+	status = "okay";
+	phy-handle = <&phy4>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
+
+&port5 {
+	status = "okay";
+	phy-handle = <&phy5>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
+
+&port6 {
+	status = "okay";
+	phy-handle = <&phy6>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
+
+&port7 {
+	status = "okay";
+	phy-handle = <&phy7>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
+
+&apb {
+	usart0: usb_uart@e0808000 {
+		compatible = "microchip,lan966x-serial";
+		reg = <0xe0808000 0x400>,
+		      <0x00200000 0x80000>;
+		reg-names = "udphs", "interface_ept";
+		interrupts = <GIC_SPI 76 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&clks GCK_GATE_UDPHS>;
+		status = "okay";
+	};
+};
+

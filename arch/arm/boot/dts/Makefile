@@ -78,6 +78,10 @@ dtb-$(CONFIG_SOC_SAM_V7) += \
 	at91-vinco.dtb
 dtb-$(CONFIG_SOC_SAMA7G5) += \
 	at91-sama7g5ek.dtb
+dtb-$(CONFIG_SOC_LAN966) += \
+	lan966x_pcb8291.dtb \
+	lan966x_pcb8290.dtb \
+	lan966x_pcb8309.dtb
 dtb-$(CONFIG_ARCH_AXXIA) += \
 	axm5516-amarillo.dtb
 dtb-$(CONFIG_ARCH_BCM2835) += \

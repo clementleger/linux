@@ -1,0 +1,354 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * lan966x.dtsi - Device Tree Include file for Microchip LAN966x family SoC
+ *
+ *  Copyright (C) 2020 Microchip,
+ * 		  2020 Kavyasree Kotagiri <kavyasree.kotagiri@microchip.com>
+ *
+ */
+
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/mfd/atmel-flexcom.h>
+#include <dt-bindings/dma/at91.h>
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/clock/microchip,lan966x.h>
+#include <dt-bindings/soc/mchp,lan966x_icpu.h>
+#include <dt-bindings/phy/phy-lan966x-serdes.h>
+
+/ {
+	model = "Microchip LAN966x family SoC";
+	compatible = "microchip,lan966x";
+	interrupt-parent = <&gic>;
+	#address-cells = <1>;
+	#size-cells = <1>;
+
+
+	aliases {
+		serial0 = &usart0;
+		ethernet0 = &lan966x_switch;
+	};
+
+	cpus {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		cpu@0 {
+			device_type = "cpu";
+			compatible = "arm,cortex-a7";
+			reg = <0x0>;
+		};
+	};
+
+	memory@60000000 {
+		device_type = "memory";
+		reg = <0x60000000 0x40000000>;  // 1GB
+	};
+
+	sys_clk: sys_clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <15625000>;  // System clock = 15.625MHz
+	};
+
+	baseclk: baseclk{
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <12000000>;
+	};
+
+	multclk: multclk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <96000000>;
+	};
+
+	cpu_clk: cpu_clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <600000000>;  // CPU clock = 600MHz
+	};
+
+	fabric_clk: fabric_clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <30000000>;  // Fabric clock = 30MHz
+	};
+
+	nic_clk: nic_clk {
+		compatible = "fixed-clock";
+		#clock-cells = <0>;
+		clock-frequency = <200000000>;  // NIC clock = 200MHz
+	};
+
+	lan966x_uio0: mscc_switch@e0000000 {
+		compatible = "generic-uio";
+		reg = <0xe0000000 0x4000000>;
+		status = "okay";
+	};
+
+	clks: clock-controller@e00c00a8 {
+		compatible = "microchip,lan966x-gck";
+		#clock-cells = <1>;
+		clocks = <&cpu_clk>, <&fabric_clk>, <&sys_clk>;
+		clock-names = "cpu", "ddr", "sys";
+		reg = <CPU_GCK_REGS_ADDR CPU_GCK_REGS_SIZE>,
+		      <CPU_SFR_REGS_CLK_GATING_ADDR CPU_SFR_REGS_CLK_GATING_SIZE>;
+	};
+
+	timer {
+		compatible = "arm,armv7-timer";
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_PPI 13 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 14 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 10 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>,
+			     <GIC_PPI 11 (GIC_CPU_MASK_SIMPLE(8) | IRQ_TYPE_LEVEL_LOW)>;
+		arm,cpu-registers-not-fw-configured;
+	};
+
+	ahb: ahb {
+		compatible = "simple-bus";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		apb: apb {
+			compatible = "simple-bus";
+			#address-cells = <1>;
+			#size-cells = <1>;
+			ranges;
+
+			cpu_ctrl: syscon@e00c0000 {
+				compatible = "microchip,lan966x-cpu-syscon", "syscon";
+				reg = <CPU_ADDR CPU_SIZE>;
+			};
+
+			switch_reset: reset@e200400c {
+				compatible = "microchip,lan966x-switch-reset";
+				reg = <0xe200400c 0x4>;
+				reg-names = "gcb";
+				#reset-cells = <1>;
+				cpu-syscon = <&cpu_ctrl>;
+			};
+
+			phy_reset: phy-reset@e2010010 {
+				compatible = "microchip,lan966x-phy-reset";
+				reg = <CHIP_TOP_CUPHY_CFG_ADDR CHIP_TOP_CUPHY_CFG_SIZE>;
+				reg-names = "phy";
+				#reset-cells = <1>;
+			};
+
+			serdes: serdes@e202c000 {
+				compatible = "microchip,lan966x-serdes";
+				reg = <HSIO_ADDR HSIO_SIZE>,
+				      <0xe2004010 0x4>;
+				#phy-cells = <2>;
+			};
+
+			gpio: pinctrl@e2004064 {
+				compatible = "microchip,lan966x-pinctrl";
+				reg = <GCB_GPIO_ADDR GCB_GPIO_SIZE>,
+				      <CHIP_TOP_GPIO_CFG_ADDR CHIP_TOP_GPIO_CFG_SIZE>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				gpio-ranges = <&gpio 0 0 78>;
+				interrupt-controller;
+				interrupts = <GIC_SPI 17 IRQ_TYPE_LEVEL_HIGH>;
+				#interrupt-cells = <1>;
+
+				fc_shrd7_pins: fc_shrd7-pins {
+					pins = "GPIO_49";
+					function = "fc_shrd7";
+				};
+
+				fc_shrd8_pins: fc_shrd8-pins {
+					pins = "GPIO_54";
+					function = "fc_shrd8";
+				};
+
+				fc3_b_pins: spi-pins {
+					/* SCK, RXD, TXD */
+					pins = "GPIO_51", "GPIO_52", "GPIO_53";
+					function = "fc3_b";
+				};
+
+				fc4_b_pins: fcb4-i2c-pins {
+					/* RXD, TXD */
+					pins = "GPIO_57", "GPIO_58";
+					function = "fc4_b";
+				};
+
+				sgpio_a_pins: sgpio-pins {
+					/* SCK, D0, D1, LD */
+					pins = "GPIO_32", "GPIO_33", "GPIO_34", "GPIO_35";
+					function = "sgpio_a";
+				};
+
+				miim_a_pins: mdio_pins {
+					/* MDC, MDIO*/
+					pins =  "GPIO_28", "GPIO_29";
+					function = "miim_a";
+				};
+			};
+
+			lan966x_mdio0: mdio@e2004118 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "microchip,lan966x-miim";
+				reg = <GCB_MIIM_0_ADDR GCB_MIIM_0_SIZE>;
+				status = "disabled";
+
+				pinctrl-0 = <&miim_a_pins>;
+				pinctrl-names = "default";
+
+				resets = <&phy_reset 0>;
+				reset-names = "phy";
+			};
+
+			lan966x_mdio1: mdio@e200413c {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "microchip,lan966x-miim";
+				reg = <GCB_MIIM_1_ADDR GCB_MIIM_1_SIZE>;
+				status = "disabled";
+
+				resets = <&phy_reset 0>;
+				reset-names = "phy";
+			};
+
+			lan966x_switch: switch@e0000000 {
+				compatible = "microchip,lan966x-switch";
+				reg = <0xe0000000 0x0100000>,
+				      <0xe2000000 0x0800000>;
+
+				reg-names = "cpu", "gcb";
+
+				interrupts = <GIC_SPI 12 IRQ_TYPE_LEVEL_HIGH
+					      GIC_SPI  9 IRQ_TYPE_LEVEL_HIGH>;
+				interrupt-names = "xtr", "ana";
+
+				resets = <&switch_reset 0>,
+					 <&phy_reset 0>;
+				reset-names = "switch", "phy";
+
+				status = "disabled";
+
+				ethernet-ports {
+					#address-cells = <1>;
+					#size-cells = <0>;
+
+					port0: port@0 {
+						reg = <0>;
+						status = "disabled";
+					};
+
+					port1: port@1 {
+						reg = <1>;
+						status = "disabled";
+					};
+
+					port2: port@2 {
+						reg = <2>;
+						status = "disabled";
+					};
+
+					port3: port@3 {
+						reg = <3>;
+						status = "disabled";
+					};
+
+					port4: port@4 {
+						reg = <4>;
+						status = "disabled";
+					};
+
+					port5: port@5 {
+						reg = <5>;
+						status = "disabled";
+					};
+
+					port6: port@6 {
+						reg = <6>;
+						status = "disabled";
+					};
+
+					port7: port@7 {
+						reg = <7>;
+						status = "disabled";
+					};
+				};
+			};
+
+			gic: interrupt-controller@e8c11000 {
+				compatible = "arm,gic-400", "arm,cortex-a7-gic";
+				#interrupt-cells = <3>;
+				interrupts = <GIC_PPI 9 IRQ_TYPE_LEVEL_HIGH>;
+				interrupt-controller;
+				reg = <0xe8c11000 0x1000>, /* Distributor GICD_*/
+				      <0xe8c12000 0x2000>, /* CPU interface GICC_*/
+				      <0xe8c14000 0x2000>, /* Virt interface control */
+				      <0xe8c16000 0x2000>; /* Virt CPU interface */
+			};
+
+			flx3: flexcom@e0064000 {
+				compatible = "atmel,sama5d2-flexcom";
+				reg = <FLEXCOM_3_FLEXCOM_REG_ADDR FLEXCOM_3_FLEXCOM_REG_SIZE>,
+				      <GCB_FLEXCOM_SHARED_3_ADDR GCB_FLEXCOM_SHARED_3_SIZE>;
+				clocks = <&fabric_clk>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+				ranges = <0x0 0xe0064000 0x800>;
+				status = "disabled";
+			};
+
+			flx4: flexcom@e0070000 {
+				compatible = "atmel,sama5d2-flexcom";
+				reg = <FLEXCOM_4_FLEXCOM_REG_ADDR FLEXCOM_4_FLEXCOM_REG_SIZE>;
+				clocks = <&fabric_clk>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+				ranges = <0x0 0xe0070000 0x800>;
+				status = "disabled";
+			};
+
+			sgpio0: gpio@e2004190 {
+				#address-cells = <1>;
+				#size-cells = <0>;
+				compatible = "microchip,sparx5-sgpio";
+				status = "disabled";
+				clocks = <&fabric_clk>;
+				pinctrl-0 = <&sgpio_a_pins>;
+				pinctrl-names = "default";
+				bus-frequency = <6000000>;
+				resets = <&switch_reset 0>;
+				reset-names = "switch";
+				reg = <GCB_SIO_CTRL_ADDR GCB_SIO_CTRL_SIZE>;
+				sgpio_in0: gpio@0 {
+					compatible = "microchip,sparx5-sgpio-bank";
+					reg = <0>;
+					gpio-controller;
+					#gpio-cells = <3>;
+					ngpios = <96>;
+					interrupts = <GIC_SPI 18 IRQ_TYPE_LEVEL_HIGH>;
+					interrupt-controller;
+					#interrupt-cells = <3>;
+				};
+				sgpio_out0: gpio@1 {
+					compatible = "microchip,sparx5-sgpio-bank";
+					reg = <1>;
+					gpio-controller;
+					#gpio-cells = <3>;
+					ngpios = <96>;
+				};
+			};
+
+			timer0: timer@e008c000 {
+				compatible = "snps,dw-apb-timer";
+				reg = <TIMERS_TIMERS_ADDR TIMERS_TIMERS_SIZE>;
+				clocks = <&nic_clk>;
+				clock-names = "timer";
+				interrupts = <GIC_SPI 39 IRQ_TYPE_LEVEL_HIGH>;
+			};
+		};
+	};
+};

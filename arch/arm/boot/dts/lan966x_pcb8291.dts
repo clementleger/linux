@@ -1,0 +1,71 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * lan966x-sunrise.dts - Device Tree file for the Sunrise board
+ */
+/dts-v1/;
+#include "lan9662_hsio_mode_1.dtsi"
+
+/ {
+	model = "Microchip EVB - LAN9662";
+	compatible = "microchip,lan966x-sunrise", "microchip,lan966x";
+
+	gpio-restart {
+		compatible = "gpio-restart";
+		gpios = <&gpio 56 GPIO_ACTIVE_LOW>;
+		priority = <200>;
+	};
+};
+
+&lan966x_mdio1 {
+	status = "okay";
+
+	phy0: ethernet-phy@1 {
+		reg = <1>;
+	};
+
+	phy1: ethernet-phy@2 {
+		reg = <2>;
+	};
+};
+
+&lan966x_switch {
+	status = "okay";
+};
+
+&serdes {
+	status = "okay";
+};
+
+&port0 {
+	status = "okay";
+	phy-handle = <&phy0>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
+
+&port1 {
+	status = "okay";
+	phy-handle = <&phy1>;
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+};
+
+&flx3 {
+	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
+	status = "okay";
+
+	usart0: serial@200 {
+		compatible = "atmel,at91sam9260-usart";
+		reg = <0x200 0x200>;
+		interrupts = <GIC_SPI 51 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&nic_clk>;
+		clock-names = "usart";
+		assinged-clocks = <&clks GCK_ID_FLEXCOM3>;
+		assigned-clock-rates = <30000000>;
+		pinctrl-0 = <&fc3_b_pins>, <&fc_shrd7_pins>, <&fc_shrd8_pins>;
+		pinctrl-names = "default";
+		status = "okay";
+	};
+};

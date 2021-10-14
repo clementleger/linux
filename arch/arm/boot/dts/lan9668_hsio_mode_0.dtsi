@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/dts-v1/;
+#include "lan966x.dtsi"
+
+&port0 {
+	phy-mode = "qsgmii";
+	phys = <&serdes 0 SERDES6G(1)>;
+};
+
+&port1 {
+	phy-mode = "qsgmii";
+	phys = <&serdes 1 SERDES6G(1)>;
+};
+
+&port2 {
+	phy-mode = "qsgmii";
+	phys = <&serdes 2 SERDES6G(1)>;
+};
+
+&port3 {
+	phy-mode = "qsgmii";
+	phys = <&serdes 3 SERDES6G(1)>;
+};
+
+&port4 {
+	phy-mode = "qsgmii";
+	phys = <&serdes 4 SERDES6G(2)>;
+};
+
+&port5 {
+	phy-mode = "qsgmii";
+	phys = <&serdes 5 SERDES6G(2)>;
+};
+
+&port6 {
+	phy-mode = "qsgmii";
+	phys = <&serdes 6 SERDES6G(2)>;
+};
+
+&port7 {
+	phy-mode = "qsgmii";
+	phys = <&serdes 7 SERDES6G(2)>;
+};
