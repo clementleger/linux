@@ -1,0 +1,49 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: "http://devicetree.org/schemas/reset/lan966x-phy,rst.yaml#"
+$schema: "http://devicetree.org/meta-schemas/core.yaml#"
+
+title: Microchip Lan966x PHY Reset
+
+maintainers:
+  - Horatiu Vultur <horatiu.vultur@microchip.com>
+
+description: |
+  The Microchip Lan966x Switch provides 2 internal PHY which needs to be
+  released from reset before they can be accessed. Also it might have external
+  PHYs which requires to toggle a GPIO before the access to the PHYs.
+
+properties:
+  $nodename:
+    pattern: "^reset-controller@[0-9a-f]+$"
+
+  compatible:
+    const: microchip,lan966x-phy-reset
+
+  reg:
+    maxItems: 1
+
+  "#reset-cells":
+    const: 1
+
+  external-phy-reset-gpios:
+    description: used for release of reset of the external PHY
+    maxItems: 1
+
+required:
+  - compatible
+  - reg
+  - reg-names
+  - "#reset-cells"
+
+additionalProperties: false
+
+examples:
+  - |
+    phy_reset: phy-reset@e2010010 {
+        compatible = "microchip,lan966x-phy-reset";
+        reg = <0xe2010010 0x14>;
+        reg-names = "phy";
+        #reset-cells = <1>;
+    };
