@@ -12,6 +12,7 @@
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/of.h>
+#include <linux/property.h>
 #include <linux/of_platform.h>
 #include <linux/err.h>
 #include <linux/io.h>
@@ -36,7 +37,6 @@ struct atmel_flexcom {
 
 static int atmel_flexcom_probe(struct platform_device *pdev)
 {
-	struct device_node *np = pdev->dev.of_node;
 	struct resource *res;
 	struct atmel_flexcom *ddata;
 	int err;
@@ -47,7 +47,8 @@ static int atmel_flexcom_probe(struct platform_device *pdev)
 
 	platform_set_drvdata(pdev, ddata);
 
-	err = of_property_read_u32(np, "atmel,flexcom-mode", &ddata->opmode);
+	err = device_property_read_u32(&pdev->dev, "atmel,flexcom-mode",
+				       &ddata->opmode);
 	if (err)
 		return err;
 
@@ -78,7 +79,10 @@ static int atmel_flexcom_probe(struct platform_device *pdev)
 
 	clk_disable_unprepare(ddata->clk);
 
-	return devm_of_platform_populate(&pdev->dev);
+	if (IS_ENABLED(CONFIG_OF))
+		return devm_of_platform_populate(&pdev->dev);
+
+	return 0;
 }
 
 static const struct of_device_id atmel_flexcom_of_match[] = {
