@@ -123,7 +123,6 @@ config MFD_AT91_USART
 config MFD_ATMEL_FLEXCOM
 	tristate "Atmel Flexcom (Flexible Serial Communication Unit)"
 	select MFD_CORE
-	depends on OF
 	help
 	  Select this to get support for Atmel Flexcom. This is a wrapper
 	  which embeds a SPI controller, a I2C controller and a USART. Only
