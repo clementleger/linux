@@ -886,15 +886,15 @@ int at91_twi_probe_master(struct platform_device *pdev,
 			return rc;
 	}
 
-	if (!of_property_read_u32(pdev->dev.of_node, "atmel,fifo-size",
+	if (!device_property_read_u32(&pdev->dev, "atmel,fifo-size",
 				  &dev->fifo_size)) {
 		dev_info(dev->dev, "Using FIFO (%u data)\n", dev->fifo_size);
 	}
 
-	dev->enable_dig_filt = of_property_read_bool(pdev->dev.of_node,
+	dev->enable_dig_filt = device_property_read_bool(&pdev->dev,
 						     "i2c-digital-filter");
 
-	dev->enable_ana_filt = of_property_read_bool(pdev->dev.of_node,
+	dev->enable_ana_filt = device_property_read_bool(&pdev->dev,
 						     "i2c-analog-filter");
 	at91_calc_twi_clock(dev);
 
