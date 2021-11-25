@@ -88,6 +88,19 @@ static struct at91_twi_pdata at91sam9g10_config = {
 	.clk_offset = 4,
 };
 
+static struct at91_twi_pdata lan966x_config = {
+	.clk_max_div = 7,
+	.clk_offset = 0,
+	.clk_brsrcclk = true,
+	.has_unre_flag = true,
+	.has_alt_cmd = true,
+	.has_hold_field = true,
+	.has_dig_filtr = true,
+	.has_adv_dig_filtr = true,
+	.has_ana_filtr = true,
+	.has_clear_cmd = true,
+};
+
 static const struct platform_device_id at91_twi_devtypes[] = {
 	{
 		.name = "i2c-at91rm9200",
@@ -104,6 +117,9 @@ static const struct platform_device_id at91_twi_devtypes[] = {
 	}, {
 		.name = "i2c-at91sam9g10",
 		.driver_data = (unsigned long) &at91sam9g10_config,
+	}, {
+		.name = "lan966x-i2c",
+		.driver_data = (unsigned long) &lan966x_config,
 	}, {
 		/* sentinel */
 	}
@@ -137,19 +153,6 @@ static struct at91_twi_pdata sama5d2_config = {
 static struct at91_twi_pdata sam9x60_config = {
 	.clk_max_div = 7,
 	.clk_offset = 3,
-	.has_unre_flag = true,
-	.has_alt_cmd = true,
-	.has_hold_field = true,
-	.has_dig_filtr = true,
-	.has_adv_dig_filtr = true,
-	.has_ana_filtr = true,
-	.has_clear_cmd = true,
-};
-
-static struct at91_twi_pdata lan966x_config = {
-	.clk_max_div = 7,
-	.clk_offset = 0,
-	.clk_brsrcclk = true,
 	.has_unre_flag = true,
 	.has_alt_cmd = true,
 	.has_hold_field = true,
