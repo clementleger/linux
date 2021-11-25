@@ -219,7 +219,8 @@ static int mfd_add_device(struct device *parent, int id,
 				cell->name, platform_id);
 	}
 
-	mfd_acpi_add_device(cell, pdev);
+	if (!cell->swnode)
+		mfd_acpi_add_device(cell, pdev);
 
 	if (cell->pdata_size) {
 		ret = platform_device_add_data(pdev,
