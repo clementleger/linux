@@ -131,6 +131,34 @@ config MFD_ATMEL_FLEXCOM
 	  by the probe function of this MFD driver according to a device tree
 	  property.
 
+config MFD_LAN966X_PCI_OF
+	tristate "Microchip LAN966X PCIe Support using OF overlay"
+	depends on PCI
+	select GENERIC_IRQ_CHIP
+	select MFD_CORE
+	select COMMON_CLK_LAN966X
+	select MDIO_MSCC_MIIM
+	select REGMAP_MMIO
+	select PINCTRL_OCELOT
+	select PINCTRL
+	select RESET_MCHP_SPARX5
+	select RESET_CONTROLLER
+	select PHY_LAN966X_SERDES
+	select MFD_SYSCON
+	select LAN966X_SWITCH
+	select NET_SWITCHDEV
+	select I2C_MUX
+	select I2C_MUX_PINCTRL
+	select MFD_ATMEL_FLEXCOM
+	select SFP
+	select PHYLINK
+	select I2C_AT91
+	select OF
+	select OF_OVERLAY
+	help
+	  This enables the pci for multifunction driver. This is used
+	  when an external CPU is connected to LAN966X.
+
 config MFD_ATMEL_HLCDC
 	tristate "Atmel HLCDC (High-end LCD Controller)"
 	select MFD_CORE
