@@ -16,6 +16,7 @@
 #include <linux/phy.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
+#include <linux/reset.h>
 
 #define MSCC_MIIM_REG_STATUS		0x0
 #define		MSCC_MIIM_STATUS_STAT_PENDING	BIT(2)
@@ -41,6 +42,10 @@ struct mscc_miim_dev {
 	int mii_status_offset;
 	struct regmap *phy_regs;
 	int phy_reset_offset;
+};
+
+struct mscc_miim_props {
+	int (*reset)(struct mii_bus *bus);
 };
 
 /* When high resolution timers aren't built-in: we can't use usleep_range() as
@@ -181,6 +186,19 @@ static int mscc_miim_reset(struct mii_bus *bus)
 	return 0;
 }
 
+static int lan966x_miim_reset(struct mii_bus *bus)
+{
+	struct reset_control *reset;
+
+	reset = devm_reset_control_get_optional_shared(bus->parent, "phy");
+	if (IS_ERR(reset))
+		return dev_err_probe(bus->parent, PTR_ERR(reset), "Failed to get reset\n");
+	reset_control_reset(reset);
+	reset_control_put(reset);
+
+	return 0;
+}
+
 static const struct regmap_config mscc_miim_regmap_config = {
 	.reg_bits	= 32,
 	.val_bits	= 32,
@@ -188,7 +206,8 @@ static const struct regmap_config mscc_miim_regmap_config = {
 };
 
 int mscc_miim_setup(struct device *dev, struct mii_bus **pbus, const char *name,
-		    struct regmap *mii_regmap, int status_offset)
+		    struct regmap *mii_regmap, int status_offset,
+		    int (*reset)(struct mii_bus *bus))
 {
 	struct mscc_miim_dev *miim;
 	struct mii_bus *bus;
@@ -200,7 +219,7 @@ int mscc_miim_setup(struct device *dev, struct mii_bus **pbus, const char *name,
 	bus->name = name;
 	bus->read = mscc_miim_read;
 	bus->write = mscc_miim_write;
-	bus->reset = mscc_miim_reset;
+	bus->reset = reset;
 	snprintf(bus->id, MII_BUS_ID_SIZE, "%s-mii", dev_name(dev));
 	bus->parent = dev;
 
@@ -220,11 +239,14 @@ EXPORT_SYMBOL(mscc_miim_setup);
 static int mscc_miim_probe(struct platform_device *pdev)
 {
 	struct regmap *mii_regmap, *phy_regmap = NULL;
+	const struct mscc_miim_props *props;
 	void __iomem *regs, *phy_regs;
 	struct mscc_miim_dev *miim;
 	struct resource *res;
 	struct mii_bus *bus;
 	int ret;
+
+	props = device_get_match_data(&pdev->dev);
 
 	regs = devm_platform_get_and_ioremap_resource(pdev, 0, NULL);
 	if (IS_ERR(regs)) {
@@ -257,7 +279,8 @@ static int mscc_miim_probe(struct platform_device *pdev)
 		}
 	}
 
-	ret = mscc_miim_setup(&pdev->dev, &bus, "mscc_miim", mii_regmap, 0);
+	ret = mscc_miim_setup(&pdev->dev, &bus, "mscc_miim", mii_regmap, 0,
+			      props->reset);
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Unable to setup the MDIO bus\n");
 		return ret;
@@ -287,9 +310,23 @@ static int mscc_miim_remove(struct platform_device *pdev)
 	return 0;
 }
 
+static const struct mscc_miim_props miim_props_ocelot = {
+	.reset = mscc_miim_reset,
+};
+
+static const struct mscc_miim_props miim_props_lan966x = {
+	.reset = lan966x_miim_reset,
+};
+
 static const struct of_device_id mscc_miim_match[] = {
-	{ .compatible = "mscc,ocelot-miim" },
-	{ }
+	{
+		.compatible = "mscc,ocelot-miim",
+		.data = &miim_props_ocelot,
+	},
+	{
+		.compatible = "microchip,lan966x-miim",
+		.data = &miim_props_lan966x,
+	}
 };
 MODULE_DEVICE_TABLE(of, mscc_miim_match);
 
