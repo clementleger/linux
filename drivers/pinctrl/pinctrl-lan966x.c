@@ -791,8 +791,10 @@ static const struct pinctrl_ops lan966x_pctl_ops = {
 	.get_groups_count = lan966x_pctl_get_groups_count,
 	.get_group_name = lan966x_pctl_get_group_name,
 	.get_group_pins = lan966x_pctl_get_group_pins,
+#ifdef CONFIG_OF
 	.dt_node_to_map = pinconf_generic_dt_node_to_map_pin,
 	.dt_free_map = pinconf_generic_dt_free_map,
+#endif
 };
 
 static struct pinctrl_desc lan966x_desc = {
@@ -1037,10 +1039,13 @@ static int lan966x_gpiochip_register(struct platform_device *pdev,
 	gc->ngpio = info->desc->npins;
 	gc->parent = &pdev->dev;
 	gc->base = 0;
-	gc->of_node = info->dev->of_node;
 	gc->label = "lan966x-gpio";
 
-	irq = irq_of_parse_and_map(gc->of_node, 0);
+#if defined(CONFIG_OF_GPIO)
+	gc->of_node = info->dev->of_node;
+#endif
+
+	irq = platform_get_irq(pdev, 0);
 	if (irq) {
 		girq = &gc->irq;
 		girq->chip = &lan966x_irqchip;
@@ -1082,6 +1087,8 @@ static int lan966x_pinctrl_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	info->desc = (struct pinctrl_desc *)device_get_match_data(dev);
+	if (!info->desc)
+		return -EINVAL;
 
 	base = devm_ioremap_resource(dev,
 			platform_get_resource(pdev, IORESOURCE_MEM, 0));
@@ -1128,7 +1135,7 @@ static int lan966x_pinctrl_probe(struct platform_device *pdev)
 static struct platform_driver lan966x_pinctrl_driver = {
 	.driver = {
 		.name = "pinctrl-lan966x",
-		.of_match_table = of_match_ptr(lan966x_pinctrl_of_match),
+		.of_match_table = lan966x_pinctrl_of_match,
 		.suppress_bind_attrs = true,
 	},
 	.probe = lan966x_pinctrl_probe,
