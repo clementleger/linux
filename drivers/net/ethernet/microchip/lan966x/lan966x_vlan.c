@@ -301,6 +301,7 @@ int lan966x_vlan_port_add_vlan(struct lan966x_port *port,
 		lan966x_mac_cpu_learn(lan966x, port->dev->dev_addr, vid);
 		lan966x_mac_cpu_learn(lan966x, lan966x->bridge->dev_addr, vid);
 		lan966x_vlan_cpu_add_vlan_mask(lan966x, vid);
+		lan966x_fdb_write_entries(lan966x, vid);
 	}
 
 	lan966x_vlan_port_set_vid(port, vid, pvid, untagged);
@@ -332,6 +333,7 @@ int lan966x_vlan_port_del_vlan(struct lan966x_port *port,
 	if (!lan966x_vlan_port_any_vlan_mask(lan966x, vid)) {
 		lan966x_mac_cpu_forget(lan966x, lan966x->bridge->dev_addr, vid);
 		lan966x_vlan_cpu_del_vlan_mask(lan966x, vid);
+		lan966x_fdb_erase_entries(lan966x, vid);
 	}
 
 	return 0;
@@ -371,6 +373,7 @@ int lan966x_vlan_cpu_add_vlan(struct lan966x *lan966x,
 	}
 
 	lan966x_vlan_cpu_add_cpu_vlan_mask(lan966x, vid);
+	lan966x_fdb_write_entries(lan966x, vid);
 
 	return 0;
 }
@@ -401,6 +404,7 @@ int lan966x_vlan_cpu_del_vlan(struct lan966x *lan966x,
 	/* Remove the CPU part of the vlan */
 	lan966x_vlan_cpu_del_cpu_vlan_mask(lan966x, vid);
 	lan966x_vlan_cpu_del_vlan_mask(lan966x, vid);
+	lan966x_fdb_erase_entries(lan966x, vid);
 
 	return 0;
 }

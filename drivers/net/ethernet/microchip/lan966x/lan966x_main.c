@@ -937,7 +937,14 @@ static int lan966x_probe(struct platform_device *pdev)
 
 	lan966x_register_notifier_blocks(lan966x);
 
+	err = lan966x_fdb_init(lan966x);
+	if (err)
+		goto unregister_notifier_blocks;
+
 	return 0;
+
+unregister_notifier_blocks:
+	lan966x_unregister_notifier_blocks(lan966x);
 
 cleanup_ports:
 	fwnode_handle_put(portnp);
@@ -965,6 +972,7 @@ static int lan966x_remove(struct platform_device *pdev)
 
 	lan966x_mac_purge_entries(lan966x);
 	lan966x_ext_purge_entries();
+	lan966x_fdb_deinit(lan966x);
 
 	return 0;
 }
