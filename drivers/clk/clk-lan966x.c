@@ -12,6 +12,7 @@
 #include <linux/io.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
+#include <linux/clkdev.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/slab.h>
@@ -270,7 +271,8 @@ static int lan966x_clk_probe(struct platform_device *pdev)
 			return ret;
 	}
 
-	return devm_of_clk_add_hw_provider(dev, of_clk_hw_onecell_get, hw_data);
+	return devm_fwnode_clk_add_hw_provider(dev, fwnode_clk_hw_onecell_get,
+					       hw_data);
 }
 
 static const struct of_device_id lan966x_clk_dt_ids[] = {
