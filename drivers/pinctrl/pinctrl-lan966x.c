@@ -1140,4 +1140,5 @@ static struct platform_driver lan966x_pinctrl_driver = {
 	},
 	.probe = lan966x_pinctrl_probe,
 };
-builtin_platform_driver(lan966x_pinctrl_driver);
+module_platform_driver(lan966x_pinctrl_driver);
+MODULE_LICENSE("Dual MIT/GPL");
