@@ -85,9 +85,5 @@ static struct platform_driver lan966x_phy_reset_driver = {
 		.of_match_table = lan966x_phy_reset_of_match,
 	},
 };
-
-static int __init lan966x_phy_reset_init(void)
-{
-	return platform_driver_register(&lan966x_phy_reset_driver);
-}
-postcore_initcall(lan966x_phy_reset_init);
+module_platform_driver(lan966x_phy_reset_driver);
+MODULE_LICENSE("GPL");
