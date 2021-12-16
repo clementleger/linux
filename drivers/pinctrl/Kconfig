@@ -391,6 +391,17 @@ config PINCTRL_OCELOT
 	select OF_GPIO
 	select REGMAP_MMIO
 
+config PINCTRL_LAN966x
+	tristate "Pinctrl driver for LAN966x SoC"
+	default SOC_LAN966X
+	depends on HAS_IOMEM
+	select GPIOLIB
+	select GPIOLIB_IRQCHIP
+	select GENERIC_PINCONF
+	select GENERIC_PINCTRL_GROUPS
+	select GENERIC_PINMUX_FUNCTIONS
+	select REGMAP_MMIO
+
 config PINCTRL_MICROCHIP_SGPIO
 	bool "Pinctrl driver for Microsemi/Microchip Serial GPIO"
 	depends on OF
