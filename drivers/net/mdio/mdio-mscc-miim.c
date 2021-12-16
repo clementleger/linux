@@ -326,7 +326,8 @@ static const struct of_device_id mscc_miim_match[] = {
 	{
 		.compatible = "microchip,lan966x-miim",
 		.data = &miim_props_lan966x,
-	}
+	},
+	{},
 };
 MODULE_DEVICE_TABLE(of, mscc_miim_match);
 
