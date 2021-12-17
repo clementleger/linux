@@ -9,6 +9,7 @@
 #include <linux/phy.h>
 
 #if IS_ENABLED(CONFIG_FWNODE_MDIO)
+bool fwnode_mdiobus_child_is_phy(struct fwnode_handle *child);
 int fwnode_mdiobus_phy_device_register(struct mii_bus *mdio,
 				       struct phy_device *phy,
 				       struct fwnode_handle *child, u32 addr);
@@ -18,6 +19,11 @@ int fwnode_mdiobus_register_phy(struct mii_bus *bus,
 
 int fwnode_mdiobus_register(struct mii_bus *mdio, struct fwnode_handle *fwnode);
 #else /* CONFIG_FWNODE_MDIO */
+static inline bool fwnode_mdiobus_child_is_phy(struct fwnode_handle *child)
+{
+	return false;
+}
+
 int fwnode_mdiobus_phy_device_register(struct mii_bus *mdio,
 				       struct phy_device *phy,
 				       struct fwnode_handle *child, u32 addr)
