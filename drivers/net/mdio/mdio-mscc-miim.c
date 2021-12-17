@@ -12,9 +12,10 @@
 #include <linux/kernel.h>
 #include <linux/mdio/mdio-mscc-miim.h>
 #include <linux/module.h>
-#include <linux/of_mdio.h>
+#include <linux/fwnode_mdio.h>
 #include <linux/phy.h>
 #include <linux/platform_device.h>
+#include <linux/property.h>
 #include <linux/regmap.h>
 #include <linux/reset.h>
 
@@ -290,7 +291,7 @@ static int mscc_miim_probe(struct platform_device *pdev)
 	miim->phy_regs = phy_regmap;
 	miim->phy_reset_offset = 0;
 
-	ret = of_mdiobus_register(bus, pdev->dev.of_node);
+	ret = fwnode_mdiobus_register(bus, dev_fwnode(&pdev->dev));
 	if (ret < 0) {
 		dev_err(&pdev->dev, "Cannot register MDIO bus (%d)\n", ret);
 		return ret;
