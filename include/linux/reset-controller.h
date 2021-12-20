@@ -24,7 +24,9 @@ struct reset_control_ops {
 
 struct module;
 struct device_node;
+struct fwnode_handle;
 struct of_phandle_args;
+struct fwnode_reference_args;
 
 /**
  * struct reset_control_lookup - represents a single lookup entry
@@ -60,10 +62,16 @@ struct reset_control_lookup {
  * @reset_control_head: head of internal list of requested reset controls
  * @dev: corresponding driver model device struct
  * @of_node: corresponding device tree node as phandle target
+ * @fwnode: corresponding firmware node as reference target
  * @of_reset_n_cells: number of cells in reset line specifiers
  * @of_xlate: translation function to translate from specifier as found in the
  *            device tree to id as given to the reset control ops, defaults
  *            to :c:func:`of_reset_simple_xlate`.
+ * @fwnode_reset_n_cells: number of cells in reset line reference specifiers
+ * @fwnode_xlate: translation function to translate from reference specifier as
+ *                found in the firmware node description to id as given to the
+ *                reset control ops, defaults to
+ *                :c:func:`fwnode_reset_simple_xlate`.
  * @nr_resets: number of reset controls in this reset controller device
  */
 struct reset_controller_dev {
@@ -73,9 +81,13 @@ struct reset_controller_dev {
 	struct list_head reset_control_head;
 	struct device *dev;
 	struct device_node *of_node;
+	struct fwnode_handle *fwnode;
 	int of_reset_n_cells;
 	int (*of_xlate)(struct reset_controller_dev *rcdev,
 			const struct of_phandle_args *reset_spec);
+	int fwnode_reset_n_cells;
+	int (*fwnode_xlate)(struct reset_controller_dev *rcdev,
+			    const struct fwnode_reference_args *reset_spec);
 	unsigned int nr_resets;
 };
 
