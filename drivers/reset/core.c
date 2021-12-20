@@ -4,6 +4,7 @@
  *
  * Copyright 2013 Philipp Zabel, Pengutronix
  */
+#include <linux/acpi.h>
 #include <linux/atomic.h>
 #include <linux/device.h>
 #include <linux/err.h>
@@ -67,29 +68,49 @@ static const char *rcdev_name(struct reset_controller_dev *rcdev)
 	if (rcdev->dev)
 		return dev_name(rcdev->dev);
 
-	if (rcdev->of_node)
-		return rcdev->of_node->full_name;
+	if (rcdev->fwnode)
+		return fwnode_get_name(rcdev->fwnode);
 
 	return NULL;
 }
 
 /**
- * of_reset_simple_xlate - translate reset_spec to the reset line number
+ * fwnode_reset_simple_xlate - translate reset_spec to the reset line number
  * @rcdev: a pointer to the reset controller device
- * @reset_spec: reset line specifier as found in the device tree
+ * @rargs: fwnode reset line specifier
  *
- * This static translation function is used by default if of_xlate in
+ * This static translation function is used by default if fwnode_xlate in
  * :c:type:`reset_controller_dev` is not set. It is useful for all reset
  * controllers with 1:1 mapping, where reset lines can be indexed by number
  * without gaps.
  */
-static int of_reset_simple_xlate(struct reset_controller_dev *rcdev,
-				 const struct of_phandle_args *reset_spec)
+static int fwnode_reset_simple_xlate(struct reset_controller_dev *rcdev,
+				     const struct fwnode_reference_args *rargs)
 {
-	if (reset_spec->args[0] >= rcdev->nr_resets)
+	if (rargs->args[0] >= rcdev->nr_resets)
 		return -EINVAL;
 
-	return reset_spec->args[0];
+	return rargs->args[0];
+}
+
+/**
+ * fwnode_of_reset_xlate - convert fwnode reference args for of_xlate call
+ * @rcdev: a pointer to the reset controller device
+ * @rargs: fwnode reset line specifier
+ *
+ * This static translation function is used by default for fwnode_xlate if
+ * of_xlate in * :c:type:`reset_controller_dev` is set. It allows to keep
+ * compatibility with device-tree compatible reset drivers by converting the
+ * fwnode_reference_args to of_phandle_args and calling of_xlate.
+ */
+static int fwnode_of_reset_xlate(struct reset_controller_dev *rcdev,
+				 const struct fwnode_reference_args *rargs)
+{
+	struct of_phandle_args of_args;
+
+	of_phandle_args_from_fwnode_reference_args(&of_args, rargs);
+
+	return rcdev->of_xlate(rcdev, &of_args);
 }
 
 /**
@@ -98,9 +119,24 @@ static int of_reset_simple_xlate(struct reset_controller_dev *rcdev,
  */
 int reset_controller_register(struct reset_controller_dev *rcdev)
 {
-	if (!rcdev->of_xlate) {
-		rcdev->of_reset_n_cells = 1;
-		rcdev->of_xlate = of_reset_simple_xlate;
+	if (!rcdev->fwnode) {
+		rcdev->fwnode = of_fwnode_handle(rcdev->of_node);
+	} else {
+		if (is_acpi_node(rcdev->fwnode))
+			return -EINVAL;
+	}
+
+	if (rcdev->of_xlate) {
+		if (rcdev->fwnode_xlate)
+			return -EINVAL;
+
+		rcdev->fwnode_xlate = fwnode_of_reset_xlate;
+		rcdev->fwnode_reset_n_cells = rcdev->of_reset_n_cells;
+	}
+
+	if (!rcdev->fwnode_xlate) {
+		rcdev->fwnode_reset_n_cells = 1;
+		rcdev->fwnode_xlate = fwnode_reset_simple_xlate;
 	}
 
 	INIT_LIST_HEAD(&rcdev->reset_control_head);
@@ -810,29 +846,28 @@ static void __reset_control_put_internal(struct reset_control *rstc)
 }
 
 struct reset_control *
-__of_reset_control_get(struct device_node *node, const char *id, int index,
-		       bool shared, bool optional, bool acquired)
+__fwnode_reset_control_get(struct fwnode_handle *fwnode, const char *id,
+			   int index, bool shared, bool optional, bool acquired)
 {
 	struct reset_control *rstc;
 	struct reset_controller_dev *r, *rcdev;
-	struct of_phandle_args args;
+	struct fwnode_reference_args args;
 	int rstc_id;
 	int ret;
 
-	if (!node)
+	if (!fwnode || is_acpi_node(fwnode))
 		return ERR_PTR(-EINVAL);
 
 	if (id) {
-		index = of_property_match_string(node,
-						 "reset-names", id);
-		if (index == -EILSEQ)
+		index = fwnode_property_match_string(fwnode, "reset-names", id);
+		if (index == -EILSEQ || index == -ENOMEM || index == -EOVERFLOW)
 			return ERR_PTR(index);
 		if (index < 0)
 			return optional ? NULL : ERR_PTR(-ENOENT);
 	}
 
-	ret = of_parse_phandle_with_args(node, "resets", "#reset-cells",
-					 index, &args);
+	ret = fwnode_property_get_reference_args(fwnode, "resets", "#reset-cells",
+						 0, index, &args);
 	if (ret == -EINVAL)
 		return ERR_PTR(ret);
 	if (ret)
@@ -841,7 +876,7 @@ __of_reset_control_get(struct device_node *node, const char *id, int index,
 	mutex_lock(&reset_list_mutex);
 	rcdev = NULL;
 	list_for_each_entry(r, &reset_controller_list, list) {
-		if (args.np == r->of_node) {
+		if (args.fwnode == r->fwnode) {
 			rcdev = r;
 			break;
 		}
@@ -852,12 +887,12 @@ __of_reset_control_get(struct device_node *node, const char *id, int index,
 		goto out;
 	}
 
-	if (WARN_ON(args.args_count != rcdev->of_reset_n_cells)) {
+	if (WARN_ON(args.nargs != rcdev->fwnode_reset_n_cells)) {
 		rstc = ERR_PTR(-EINVAL);
 		goto out;
 	}
 
-	rstc_id = rcdev->of_xlate(rcdev, &args);
+	rstc_id = rcdev->fwnode_xlate(rcdev, &args);
 	if (rstc_id < 0) {
 		rstc = ERR_PTR(rstc_id);
 		goto out;
@@ -868,9 +903,18 @@ __of_reset_control_get(struct device_node *node, const char *id, int index,
 
 out:
 	mutex_unlock(&reset_list_mutex);
-	of_node_put(args.np);
+	fwnode_handle_put(args.fwnode);
 
 	return rstc;
+}
+EXPORT_SYMBOL_GPL(__fwnode_reset_control_get);
+
+struct reset_control *
+__of_reset_control_get(struct device_node *node, const char *id, int index,
+		       bool shared, bool optional, bool acquired)
+{
+	return __fwnode_reset_control_get(of_fwnode_handle(node), id, index,
+					  shared, optional, acquired);
 }
 EXPORT_SYMBOL_GPL(__of_reset_control_get);
 
@@ -942,9 +986,9 @@ struct reset_control *__reset_control_get(struct device *dev, const char *id,
 	if (WARN_ON(shared && acquired))
 		return ERR_PTR(-EINVAL);
 
-	if (dev->of_node)
-		return __of_reset_control_get(dev->of_node, id, index, shared,
-					      optional, acquired);
+	if (dev_fwnode(dev))
+		return __fwnode_reset_control_get(dev_fwnode(dev), id, index,
+						  shared, optional, acquired);
 
 	return __reset_control_get_from_lookup(dev, id, shared, optional,
 					       acquired);
