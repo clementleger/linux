@@ -8,6 +8,7 @@
 
 struct device;
 struct device_node;
+struct fwnode_handle;
 struct reset_control;
 
 /**
@@ -41,6 +42,10 @@ int reset_control_bulk_deassert(int num_rstcs, struct reset_control_bulk_data *r
 int reset_control_bulk_acquire(int num_rstcs, struct reset_control_bulk_data *rstcs);
 void reset_control_bulk_release(int num_rstcs, struct reset_control_bulk_data *rstcs);
 
+struct reset_control *__fwnode_reset_control_get(struct fwnode_handle *node,
+						 const char *id, int index,
+						 bool shared, bool optional,
+						 bool acquired);
 struct reset_control *__of_reset_control_get(struct device_node *node,
 				     const char *id, int index, bool shared,
 				     bool optional, bool acquired);
@@ -112,6 +117,14 @@ static inline void reset_control_put(struct reset_control *rstc)
 static inline int __device_reset(struct device *dev, bool optional)
 {
 	return optional ? 0 : -ENOTSUPP;
+}
+
+struct reset_control *__fwnode_reset_control_get(struct fwnode_handle *node,
+						 const char *id, int index,
+						 bool shared, bool optional,
+						 bool acquired)
+{
+	return optional ? NULL : ERR_PTR(-ENOTSUPP);
 }
 
 static inline struct reset_control *__of_reset_control_get(
