@@ -56,6 +56,13 @@ bool fwnode_property_present(const struct fwnode_handle *fwnode,
 }
 EXPORT_SYMBOL_GPL(fwnode_property_present);
 
+bool fwnode_is_compatible(const struct fwnode_handle *fwnode,
+			  const char *compat)
+{
+	return fwnode_property_match_string(fwnode, "compatible", compat) >= 0;
+}
+EXPORT_SYMBOL_GPL(fwnode_is_compatible);
+
 /**
  * device_property_read_u8_array - return a u8 array property of a device
  * @dev: Device to get the property of

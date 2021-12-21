@@ -53,6 +53,8 @@ int device_property_match_string(struct device *dev,
 bool fwnode_device_is_available(const struct fwnode_handle *fwnode);
 bool fwnode_property_present(const struct fwnode_handle *fwnode,
 			     const char *propname);
+bool fwnode_is_compatible(const struct fwnode_handle *fwnode,
+			  const char *compat);
 int fwnode_property_read_u8_array(const struct fwnode_handle *fwnode,
 				  const char *propname, u8 *val,
 				  size_t nval);
