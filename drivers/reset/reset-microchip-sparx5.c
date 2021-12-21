@@ -120,6 +120,7 @@ static int mchp_sparx5_reset_probe(struct platform_device *pdev)
 	ctx->rcdev.nr_resets = 1;
 	ctx->rcdev.ops = &sparx5_reset_ops;
 	ctx->rcdev.of_node = dn;
+	ctx->rcdev.fwnode = dev_fwnode(&pdev->dev);
 	ctx->props = device_get_match_data(&pdev->dev);
 
 	return devm_reset_controller_register(&pdev->dev, &ctx->rcdev);
