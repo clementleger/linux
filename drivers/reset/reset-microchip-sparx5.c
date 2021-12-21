@@ -61,15 +61,15 @@ static const struct reset_control_ops sparx5_reset_ops = {
 static int mchp_sparx5_map_syscon(struct platform_device *pdev, char *name,
 				  struct regmap **target)
 {
-	struct device_node *syscon_np;
+	struct fwnode_handle *syscon_fwnode;
 	struct regmap *regmap;
 	int err;
 
-	syscon_np = of_parse_phandle(pdev->dev.of_node, name, 0);
-	if (!syscon_np)
+	syscon_fwnode = fwnode_find_reference(dev_fwnode(&pdev->dev), name, 0);
+	if (!syscon_fwnode)
 		return -ENODEV;
-	regmap = syscon_node_to_regmap(syscon_np);
-	of_node_put(syscon_np);
+	regmap = fwnode_get_regmap(syscon_fwnode);
+	fwnode_handle_put(syscon_fwnode);
 	if (IS_ERR(regmap)) {
 		err = PTR_ERR(regmap);
 		dev_err(&pdev->dev, "No '%s' map: %d\n", name, err);
