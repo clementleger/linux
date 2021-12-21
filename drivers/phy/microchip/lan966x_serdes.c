@@ -444,12 +444,12 @@ static const struct phy_ops serdes_ops = {
 };
 
 static struct phy *serdes_simple_xlate(struct device *dev,
-				       struct of_phandle_args *args)
+				       struct fwnode_reference_args *args)
 {
 	struct serdes_ctrl *ctrl = dev_get_drvdata(dev);
 	unsigned int port, idx, i;
 
-	if (args->args_count != 2)
+	if (args->nargs != 2)
 		return ERR_PTR(-EINVAL);
 
 	port = args->args[0];
@@ -472,7 +472,7 @@ static int serdes_phy_create(struct serdes_ctrl *ctrl, u8 idx, struct phy **phy)
 {
 	struct serdes_macro *macro;
 
-	*phy = devm_phy_create(ctrl->dev, NULL, &serdes_ops);
+	*phy = devm_phy_fwnode_create(ctrl->dev, NULL, &serdes_ops);
 	if (IS_ERR(*phy))
 		return PTR_ERR(*phy);
 
@@ -525,8 +525,8 @@ static int serdes_probe(struct platform_device *pdev)
 
 	dev_set_drvdata(&pdev->dev, ctrl);
 
-	provider = devm_of_phy_provider_register(ctrl->dev,
-						 serdes_simple_xlate);
+	provider = devm_fwnode_phy_provider_register(ctrl->dev,
+						     serdes_simple_xlate);
 
 	return PTR_ERR_OR_ZERO(provider);
 }
