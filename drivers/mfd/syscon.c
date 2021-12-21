@@ -29,6 +29,7 @@ static DEFINE_SPINLOCK(syscon_list_slock);
 static LIST_HEAD(syscon_list);
 
 struct syscon {
+	struct fwnode_handle *fwnode;
 	struct device_node *np;
 	struct regmap *regmap;
 	struct list_head list;
@@ -273,6 +274,33 @@ struct regmap *syscon_regmap_lookup_by_phandle_optional(struct device_node *np,
 }
 EXPORT_SYMBOL_GPL(syscon_regmap_lookup_by_phandle_optional);
 
+struct regmap *fwnode_get_regmap(struct fwnode_handle *node)
+{
+	struct syscon *entry, *syscon = NULL;
+
+	if (is_of_node(node))
+		return device_node_to_regmap(to_of_node(node));
+
+	spin_lock(&syscon_list_slock);
+
+	list_for_each_entry(entry, &syscon_list, list)
+		if (entry->fwnode == node) {
+			syscon = entry;
+			break;
+		}
+
+	spin_unlock(&syscon_list_slock);
+
+	if (!syscon)
+		return NULL;
+
+	if (IS_ERR(syscon))
+		return ERR_CAST(syscon);
+
+	return syscon->regmap;
+}
+EXPORT_SYMBOL_GPL(fwnode_get_regmap);
+
 static int syscon_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
@@ -297,6 +325,7 @@ static int syscon_probe(struct platform_device *pdev)
 	syscon_config.max_register = resource_size(res) - 4;
 	if (pdata)
 		syscon_config.name = pdata->label;
+	syscon->fwnode = dev_fwnode(&pdev->dev);
 	syscon->regmap = devm_regmap_init_mmio(dev, base, &syscon_config);
 	if (IS_ERR(syscon->regmap)) {
 		dev_err(dev, "regmap init failed\n");
@@ -304,6 +333,10 @@ static int syscon_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, syscon);
+
+	spin_lock(&syscon_list_slock);
+	list_add_tail(&syscon->list, &syscon_list);
+	spin_unlock(&syscon_list_slock);
 
 	dev_dbg(dev, "regmap %pR registered\n", res);
 
