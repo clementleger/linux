@@ -16,6 +16,7 @@
 #include <linux/of.h>
 #include <linux/phy/phy.h>
 #include <linux/idr.h>
+#include <linux/irqdomain.h>
 #include <linux/pm_runtime.h>
 #include <linux/regulator/consumer.h>
 
@@ -36,7 +37,7 @@ static void devm_phy_provider_release(struct device *dev, void *res)
 {
 	struct phy_provider *phy_provider = *(struct phy_provider **)res;
 
-	of_phy_provider_unregister(phy_provider);
+	fwnode_phy_provider_unregister(phy_provider);
 }
 
 static void devm_phy_consume(struct device *dev, void *res)
@@ -128,16 +129,17 @@ static struct phy *phy_find(struct device *dev, const char *con_id)
 	return pl ? pl->phy : ERR_PTR(-ENODEV);
 }
 
-static struct phy_provider *of_phy_provider_lookup(struct device_node *node)
+static
+struct phy_provider *fwnode_phy_provider_lookup(struct fwnode_handle *node)
 {
 	struct phy_provider *phy_provider;
-	struct device_node *child;
+	struct fwnode_handle *child;
 
 	list_for_each_entry(phy_provider, &phy_provider_list, list) {
-		if (phy_provider->dev->of_node == node)
+		if (dev_fwnode(phy_provider->dev) == node)
 			return phy_provider;
 
-		for_each_child_of_node(phy_provider->children, child)
+		fwnode_for_each_child_node(phy_provider->children, child)
 			if (child == node)
 				return phy_provider;
 	}
@@ -513,76 +515,90 @@ int phy_validate(struct phy *phy, enum phy_mode mode, int submode,
 }
 EXPORT_SYMBOL_GPL(phy_validate);
 
+static struct phy *fwnode_of_xlate_proxy(struct phy_provider *phy_provider,
+					 struct fwnode_reference_args *args)
+{
+	struct of_phandle_args of_args;
+
+	of_phandle_args_from_fwnode_reference_args(&of_args, args);
+
+	return phy_provider->of_xlate(phy_provider->dev, &of_args);
+}
+
 /**
- * _of_phy_get() - lookup and obtain a reference to a phy by phandle
- * @np: device_node for which to get the phy
+ * _fwnode_phy_get() - lookup and obtain a reference to a phy by reference
+ * @node: fwnode_handle for which to get the phy
  * @index: the index of the phy
  *
- * Returns the phy associated with the given phandle value,
+ * Returns the phy associated with the given reference value,
  * after getting a refcount to it or -ENODEV if there is no such phy or
  * -EPROBE_DEFER if there is a phandle to the phy, but the device is
  * not yet loaded. This function uses of_xlate call back function provided
  * while registering the phy_provider to find the phy instance.
  */
-static struct phy *_of_phy_get(struct device_node *np, int index)
+static struct phy *_fwnode_phy_get(struct fwnode_handle *node, int index)
 {
 	int ret;
 	struct phy_provider *phy_provider;
 	struct phy *phy = NULL;
-	struct of_phandle_args args;
+	struct fwnode_reference_args args;
 
-	ret = of_parse_phandle_with_args(np, "phys", "#phy-cells",
-		index, &args);
+	ret = fwnode_property_get_reference_args(node, "phys", "#phy-cells", 0,
+						 index, &args);
 	if (ret)
 		return ERR_PTR(-ENODEV);
 
 	/* This phy type handled by the usb-phy subsystem for now */
-	if (of_device_is_compatible(args.np, "usb-nop-xceiv"))
+	if (fwnode_is_compatible(args.fwnode, "usb-nop-xceiv"))
 		return ERR_PTR(-ENODEV);
 
 	mutex_lock(&phy_provider_mutex);
-	phy_provider = of_phy_provider_lookup(args.np);
+	phy_provider = fwnode_phy_provider_lookup(args.fwnode);
 	if (IS_ERR(phy_provider) || !try_module_get(phy_provider->owner)) {
 		phy = ERR_PTR(-EPROBE_DEFER);
 		goto out_unlock;
 	}
 
-	if (!of_device_is_available(args.np)) {
+	if (!fwnode_device_is_available(args.fwnode)) {
 		dev_warn(phy_provider->dev, "Requested PHY is disabled\n");
 		phy = ERR_PTR(-ENODEV);
 		goto out_put_module;
 	}
 
-	phy = phy_provider->of_xlate(phy_provider->dev, &args);
+	if (!phy_provider->fwnode_xlate)
+		phy = fwnode_of_xlate_proxy(phy_provider, &args);
+	else
+		phy = phy_provider->fwnode_xlate(phy_provider->dev, &args);
 
 out_put_module:
 	module_put(phy_provider->owner);
 
 out_unlock:
 	mutex_unlock(&phy_provider_mutex);
-	of_node_put(args.np);
+	fwnode_handle_put(args.fwnode);
 
 	return phy;
 }
 
 /**
- * of_phy_get() - lookup and obtain a reference to a phy using a device_node.
- * @np: device_node for which to get the phy
+ * fwnode_phy_get() - lookup and obtain a reference to a phy using a
+ *		      fwnode_handle.
+ * @node: fwnode_handle for which to get the phy
  * @con_id: name of the phy from device's point of view
  *
  * Returns the phy driver, after getting a refcount to it; or
  * -ENODEV if there is no such phy. The caller is responsible for
  * calling phy_put() to release that count.
  */
-struct phy *of_phy_get(struct device_node *np, const char *con_id)
+struct phy *fwnode_phy_get(struct fwnode_handle *node, const char *con_id)
 {
 	struct phy *phy = NULL;
 	int index = 0;
 
 	if (con_id)
-		index = of_property_match_string(np, "phy-names", con_id);
+		index = fwnode_property_match_string(node, "phy-names", con_id);
 
-	phy = _of_phy_get(np, index);
+	phy = _fwnode_phy_get(node, index);
 	if (IS_ERR(phy))
 		return phy;
 
@@ -593,15 +609,15 @@ struct phy *of_phy_get(struct device_node *np, const char *con_id)
 
 	return phy;
 }
-EXPORT_SYMBOL_GPL(of_phy_get);
+EXPORT_SYMBOL_GPL(fwnode_phy_get);
 
 /**
- * of_phy_put() - release the PHY
- * @phy: the phy returned by of_phy_get()
+ * fwnode_phy_put() - release the PHY
+ * @phy: the phy returned by fwnode_phy_get()
  *
- * Releases a refcount the caller received from of_phy_get().
+ * Releases a refcount the caller received from fwnode_phy_get().
  */
-void of_phy_put(struct phy *phy)
+void fwnode_phy_put(struct phy *phy)
 {
 	if (!phy || IS_ERR(phy))
 		return;
@@ -613,6 +629,18 @@ void of_phy_put(struct phy *phy)
 
 	module_put(phy->ops->owner);
 	put_device(&phy->dev);
+}
+EXPORT_SYMBOL_GPL(fwnode_phy_put);
+
+/**
+ * of_phy_put() - release the PHY
+ * @phy: the phy returned by of_phy_get()
+ *
+ * Releases a refcount the caller received from of_phy_get().
+ */
+void of_phy_put(struct phy *phy)
+{
+	fwnode_phy_put(phy);
 }
 EXPORT_SYMBOL_GPL(of_phy_put);
 
@@ -703,7 +731,7 @@ struct phy *phy_get(struct device *dev, const char *string)
 				string);
 		else
 			index = 0;
-		phy = _of_phy_get(dev->of_node, index);
+		phy = _fwnode_phy_get(of_node_to_fwnode(dev->of_node), index);
 	} else {
 		if (string == NULL) {
 			dev_WARN(dev, "missing string\n");
@@ -803,18 +831,19 @@ struct phy *devm_phy_optional_get(struct device *dev, const char *string)
 }
 EXPORT_SYMBOL_GPL(devm_phy_optional_get);
 
+
 /**
- * devm_of_phy_get() - lookup and obtain a reference to a phy.
+ * devm_fwnode_phy_get() - lookup and obtain a reference to a phy.
  * @dev: device that requests this phy
- * @np: node containing the phy
+ * @node: node containing the phy
  * @con_id: name of the phy from device's point of view
  *
- * Gets the phy using of_phy_get(), and associates a device with it using
+ * Gets the phy using fwnode_phy_get(), and associates a device with it using
  * devres. On driver detach, release function is invoked on the devres data,
  * then, devres data is freed.
  */
-struct phy *devm_of_phy_get(struct device *dev, struct device_node *np,
-			    const char *con_id)
+struct phy *devm_fwnode_phy_get(struct device *dev, struct fwnode_handle *node,
+				const char *con_id)
 {
 	struct phy **ptr, *phy;
 	struct device_link *link;
@@ -823,7 +852,7 @@ struct phy *devm_of_phy_get(struct device *dev, struct device_node *np,
 	if (!ptr)
 		return ERR_PTR(-ENOMEM);
 
-	phy = of_phy_get(np, con_id);
+	phy = fwnode_phy_get(node, con_id);
 	if (!IS_ERR(phy)) {
 		*ptr = phy;
 		devres_add(dev, ptr);
@@ -839,10 +868,10 @@ struct phy *devm_of_phy_get(struct device *dev, struct device_node *np,
 
 	return phy;
 }
-EXPORT_SYMBOL_GPL(devm_of_phy_get);
+EXPORT_SYMBOL_GPL(devm_fwnode_phy_get);
 
 /**
- * devm_of_phy_get_by_index() - lookup and obtain a reference to a phy by index.
+ * devm_fwnode_phy_get_by_index() - lookup and obtain a reference to a phy by index.
  * @dev: device that requests this phy
  * @np: node containing the phy
  * @index: index of the phy
@@ -853,8 +882,8 @@ EXPORT_SYMBOL_GPL(devm_of_phy_get);
  * then, devres data is freed.
  *
  */
-struct phy *devm_of_phy_get_by_index(struct device *dev, struct device_node *np,
-				     int index)
+struct phy *devm_fwnode_phy_get_by_index(struct device *dev,
+					 struct fwnode_handle *node, int index)
 {
 	struct phy **ptr, *phy;
 	struct device_link *link;
@@ -863,7 +892,7 @@ struct phy *devm_of_phy_get_by_index(struct device *dev, struct device_node *np,
 	if (!ptr)
 		return ERR_PTR(-ENOMEM);
 
-	phy = _of_phy_get(np, index);
+	phy = _fwnode_phy_get(node, index);
 	if (IS_ERR(phy)) {
 		devres_free(ptr);
 		return phy;
@@ -886,20 +915,20 @@ struct phy *devm_of_phy_get_by_index(struct device *dev, struct device_node *np,
 
 	return phy;
 }
-EXPORT_SYMBOL_GPL(devm_of_phy_get_by_index);
+EXPORT_SYMBOL_GPL(devm_fwnode_phy_get_by_index);
 
 /**
- * phy_create() - create a new phy
+ * phy_fwnode_create() - create a new phy
  * @dev: device that is creating the new phy
  * @node: device node of the phy
  * @ops: function pointers for performing phy operations
  *
  * Called to create a phy using phy framework.
  */
-struct phy *phy_create(struct device *dev, struct device_node *node,
-		       const struct phy_ops *ops)
+struct phy *phy_fwnode_create(struct device *dev, struct fwnode_handle *node,
+			      const struct phy_ops *ops)
 {
-	int ret;
+		int ret;
 	int id;
 	struct phy *phy;
 
@@ -922,7 +951,7 @@ struct phy *phy_create(struct device *dev, struct device_node *node,
 
 	phy->dev.class = phy_class;
 	phy->dev.parent = dev;
-	phy->dev.of_node = node ?: dev->of_node;
+	device_set_node(&phy->dev, node);
 	phy->id = id;
 	phy->ops = ops;
 
@@ -959,10 +988,10 @@ free_phy:
 	kfree(phy);
 	return ERR_PTR(ret);
 }
-EXPORT_SYMBOL_GPL(phy_create);
+EXPORT_SYMBOL_GPL(phy_fwnode_create);
 
 /**
- * devm_phy_create() - create a new phy
+ * devm_phy_fwnode_create() - create a new phy
  * @dev: device that is creating the new phy
  * @node: device node of the phy
  * @ops: function pointers for performing phy operations
@@ -972,8 +1001,9 @@ EXPORT_SYMBOL_GPL(phy_create);
  * On driver detach, release function is invoked on the devres data,
  * then, devres data is freed.
  */
-struct phy *devm_phy_create(struct device *dev, struct device_node *node,
-			    const struct phy_ops *ops)
+struct phy *devm_phy_fwnode_create(struct device *dev,
+				   struct fwnode_handle *node,
+				   const struct phy_ops *ops)
 {
 	struct phy **ptr, *phy;
 
@@ -981,7 +1011,7 @@ struct phy *devm_phy_create(struct device *dev, struct device_node *node,
 	if (!ptr)
 		return ERR_PTR(-ENOMEM);
 
-	phy = phy_create(dev, node, ops);
+	phy = phy_fwnode_create(dev, node, ops);
 	if (!IS_ERR(phy)) {
 		*ptr = phy;
 		devres_add(dev, ptr);
@@ -991,7 +1021,7 @@ struct phy *devm_phy_create(struct device *dev, struct device_node *node,
 
 	return phy;
 }
-EXPORT_SYMBOL_GPL(devm_phy_create);
+EXPORT_SYMBOL_GPL(devm_phy_fwnode_create);
 
 /**
  * phy_destroy() - destroy the phy
@@ -1024,25 +1054,31 @@ void devm_phy_destroy(struct device *dev, struct phy *phy)
 EXPORT_SYMBOL_GPL(devm_phy_destroy);
 
 /**
- * __of_phy_provider_register() - create/register phy provider with the framework
+ * __fwnode_phy_provider_register() - create/register phy provider with the phy
+ * 				      framework
  * @dev: struct device of the phy provider
- * @children: device node containing children (if different from dev->of_node)
+ * @children: device node containing children (if different from dev_fwnode(dev))
  * @owner: the module owner containing of_xlate
- * @of_xlate: function pointer to obtain phy instance from phy provider
+ * @fwnode_xlate: function pointer to obtain phy instance from phy provider using
+ *                fwnode_reference_args
+ * @of_xlate: function pointer to obtain phy instance from phy provider using
+ *            of_phandle_args
  *
- * Creates struct phy_provider from dev and of_xlate function pointer.
- * This is used in the case of dt boot for finding the phy instance from
- * phy provider.
+ * Creates struct phy_provider from dev and fwnode_xlate/of_xlate function
+ * pointer. This is used in the case of fwnode use to find the phy instance
+ * from phy provider.
  *
  * If the PHY provider doesn't nest children directly but uses a separate
  * child node to contain the individual children, the @children parameter
- * can be used to override the default. If NULL, the default (dev->of_node)
+ * can be used to override the default. If NULL, the default dev_fwnode(dev)
  * will be used. If non-NULL, the device node must be a child (or further
- * descendant) of dev->of_node. Otherwise an ERR_PTR()-encoded -EINVAL
+ * descendant) of dev_fwnode(dev). Otherwise an ERR_PTR()-encoded -EINVAL
  * error code is returned.
  */
-struct phy_provider *__of_phy_provider_register(struct device *dev,
-	struct device_node *children, struct module *owner,
+struct phy_provider *__fwnode_phy_provider_register(struct device *dev,
+	struct fwnode_handle *children, struct module *owner,
+	struct phy * (*fwnode_xlate)(struct device *dev,
+				     struct fwnode_reference_args *args),
 	struct phy * (*of_xlate)(struct device *dev,
 				 struct of_phandle_args *args))
 {
@@ -1054,23 +1090,24 @@ struct phy_provider *__of_phy_provider_register(struct device *dev,
 	 * thereof.
 	 */
 	if (children) {
-		struct device_node *parent = of_node_get(children), *next;
+		struct fwnode_handle *parent = fwnode_handle_get(children);
+		struct fwnode_handle *next;
 
 		while (parent) {
-			if (parent == dev->of_node)
+			if (parent == dev_fwnode(dev))
 				break;
 
-			next = of_get_parent(parent);
-			of_node_put(parent);
+			next = fwnode_get_parent(parent);
+			fwnode_handle_put(parent);
 			parent = next;
 		}
 
 		if (!parent)
 			return ERR_PTR(-EINVAL);
 
-		of_node_put(parent);
+		fwnode_handle_put(parent);
 	} else {
-		children = dev->of_node;
+		children = dev_fwnode(dev);
 	}
 
 	phy_provider = kzalloc(sizeof(*phy_provider), GFP_KERNEL);
@@ -1078,8 +1115,9 @@ struct phy_provider *__of_phy_provider_register(struct device *dev,
 		return ERR_PTR(-ENOMEM);
 
 	phy_provider->dev = dev;
-	phy_provider->children = of_node_get(children);
+	phy_provider->children = fwnode_handle_get(children);
 	phy_provider->owner = owner;
+	phy_provider->fwnode_xlate = fwnode_xlate;
 	phy_provider->of_xlate = of_xlate;
 
 	mutex_lock(&phy_provider_mutex);
@@ -1088,10 +1126,10 @@ struct phy_provider *__of_phy_provider_register(struct device *dev,
 
 	return phy_provider;
 }
-EXPORT_SYMBOL_GPL(__of_phy_provider_register);
+EXPORT_SYMBOL_GPL(__fwnode_phy_provider_register);
 
 /**
- * __devm_of_phy_provider_register() - create/register phy provider with the
+ * __devm_fwnode_phy_provider_register() - create/register phy provider with the
  * framework
  * @dev: struct device of the phy provider
  * @children: device node containing children (if different from dev->of_node)
@@ -1104,8 +1142,10 @@ EXPORT_SYMBOL_GPL(__of_phy_provider_register);
  * phy provider using devres. On driver detach, release function is invoked
  * on the devres data, then, devres data is freed.
  */
-struct phy_provider *__devm_of_phy_provider_register(struct device *dev,
-	struct device_node *children, struct module *owner,
+struct phy_provider *__devm_fwnode_phy_provider_register(struct device *dev,
+	struct fwnode_handle *children, struct module *owner,
+	struct phy * (*fwnode_xlate)(struct device *dev,
+				     struct fwnode_reference_args *args),
 	struct phy * (*of_xlate)(struct device *dev,
 				 struct of_phandle_args *args))
 {
@@ -1115,8 +1155,8 @@ struct phy_provider *__devm_of_phy_provider_register(struct device *dev,
 	if (!ptr)
 		return ERR_PTR(-ENOMEM);
 
-	phy_provider = __of_phy_provider_register(dev, children, owner,
-						  of_xlate);
+	phy_provider = __fwnode_phy_provider_register(dev, children, owner,
+						      fwnode_xlate, of_xlate);
 	if (!IS_ERR(phy_provider)) {
 		*ptr = phy_provider;
 		devres_add(dev, ptr);
@@ -1126,36 +1166,37 @@ struct phy_provider *__devm_of_phy_provider_register(struct device *dev,
 
 	return phy_provider;
 }
-EXPORT_SYMBOL_GPL(__devm_of_phy_provider_register);
+EXPORT_SYMBOL_GPL(__devm_fwnode_phy_provider_register);
 
 /**
- * of_phy_provider_unregister() - unregister phy provider from the framework
+ * fwnode_phy_provider_unregister() - unregister phy provider from the framework
  * @phy_provider: phy provider returned by of_phy_provider_register()
  *
  * Removes the phy_provider created using of_phy_provider_register().
  */
-void of_phy_provider_unregister(struct phy_provider *phy_provider)
+void fwnode_phy_provider_unregister(struct phy_provider *phy_provider)
 {
 	if (IS_ERR(phy_provider))
 		return;
 
 	mutex_lock(&phy_provider_mutex);
 	list_del(&phy_provider->list);
-	of_node_put(phy_provider->children);
+	fwnode_handle_put(phy_provider->children);
 	kfree(phy_provider);
 	mutex_unlock(&phy_provider_mutex);
 }
-EXPORT_SYMBOL_GPL(of_phy_provider_unregister);
+EXPORT_SYMBOL_GPL(fwnode_phy_provider_unregister);
 
 /**
- * devm_of_phy_provider_unregister() - remove phy provider from the framework
+ * devm_fwnode_phy_provider_unregister() - remove phy provider from the
+ *					   framework
  * @dev: struct device of the phy provider
  * @phy_provider: phy provider returned by of_phy_provider_register()
  *
  * destroys the devres associated with this phy provider and invokes
  * of_phy_provider_unregister to unregister the phy provider.
  */
-void devm_of_phy_provider_unregister(struct device *dev,
+void devm_fwnode_phy_provider_unregister(struct device *dev,
 	struct phy_provider *phy_provider)
 {
 	int r;
@@ -1164,7 +1205,7 @@ void devm_of_phy_provider_unregister(struct device *dev,
 		phy_provider);
 	dev_WARN_ONCE(dev, r, "couldn't find PHY provider device resource\n");
 }
-EXPORT_SYMBOL_GPL(devm_of_phy_provider_unregister);
+EXPORT_SYMBOL_GPL(devm_fwnode_phy_provider_unregister);
 
 /**
  * phy_release() - release the phy
