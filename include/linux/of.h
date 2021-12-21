@@ -175,6 +175,18 @@ static inline bool is_of_node(const struct fwnode_handle *fwnode)
 			&__of_fwnode_handle_node->fwnode : NULL;	\
 	})
 
+static inline void
+of_phandle_args_from_fwnode_reference_args(struct of_phandle_args *of_args,
+				struct fwnode_reference_args *fwnode_args)
+{
+	int i;
+
+	of_args->np = to_of_node(fwnode_args->fwnode);
+	of_args->args_count = fwnode_args->nargs;
+	for (i = 0; i < fwnode_args->nargs; i++)
+		of_args->args[i] = fwnode_args->args[i];
+}
+
 static inline bool of_have_populated_dt(void)
 {
 	return of_root != NULL;
@@ -672,6 +684,12 @@ static inline struct device_node *of_find_node_with_property(
 }
 
 #define of_fwnode_handle(node) NULL
+
+static inline void
+of_phandle_args_from_fwnode_reference_args(struct of_phandle_args *of_args,
+				struct fwnode_reference_args *fwnode_args)
+{
+}
 
 static inline bool of_have_populated_dt(void)
 {
