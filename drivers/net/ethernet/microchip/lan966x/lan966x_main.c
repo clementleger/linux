@@ -928,7 +928,7 @@ static int lan966x_probe(struct platform_device *pdev)
 		lan966x->ports[p]->config.portmode = phy_mode;
 		lan966x->ports[p]->fwnode = fwnode_handle_get(portnp);
 
-		serdes = devm_of_phy_get(lan966x->dev, to_of_node(portnp), NULL);
+		serdes = devm_fwnode_phy_get(lan966x->dev, portnp, NULL);
 		if (!IS_ERR(serdes))
 			lan966x->ports[p]->serdes = serdes;
 
