@@ -136,6 +136,29 @@ struct pinctrl_dev *get_pinctrl_dev_from_of_node(struct device_node *np)
 	return NULL;
 }
 
+static struct pinctrl_dev *get_pinctrl_dev_from_fwnode(struct fwnode_handle *fwnode)
+{
+	struct pinctrl_dev *pctldev;
+
+	mutex_lock(&pinctrldev_list_mutex);
+
+	list_for_each_entry(pctldev, &pinctrldev_list, node)
+		if (dev_fwnode(pctldev->dev) == fwnode) {
+			mutex_unlock(&pinctrldev_list_mutex);
+			return pctldev;
+		}
+
+	mutex_unlock(&pinctrldev_list_mutex);
+
+	return NULL;
+}
+
+struct pinctrl_dev *fwnode_pinctrl_get(struct fwnode_handle *node)
+{
+	return get_pinctrl_dev_from_fwnode(node);
+}
+EXPORT_SYMBOL_GPL(fwnode_pinctrl_get);
+
 /**
  * pin_get_from_name() - look up a pin number from a name
  * @pctldev: the pin control device to lookup the pin on
