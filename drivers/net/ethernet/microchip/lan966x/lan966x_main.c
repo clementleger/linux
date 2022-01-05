@@ -152,6 +152,9 @@ static int lan966x_port_open(struct net_device *dev)
 		ANA_PORT_CFG_PORTID_VAL,
 		lan966x, ANA_PORT_CFG(port->chip_port));
 
+	lan_wr(ANA_CPU_FWD_CFG_SRC_COPY_ENA,
+	       lan966x, ANA_CPU_FWD_CFG(port->chip_port));
+
 	err = phylink_fwnode_phy_connect(port->phylink, port->fwnode, 0);
 	if (err) {
 		netdev_err(dev, "Could not attach to PHY\n");
