@@ -28,6 +28,7 @@
 #include "gpiolib-acpi.h"
 #include "gpiolib-cdev.h"
 #include "gpiolib-sysfs.h"
+#include "gpiolib-fwnode.h"
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/gpio.h>
@@ -722,6 +723,10 @@ int gpiochip_add_data_with_key(struct gpio_chip *gc, void *data,
 	ret = of_gpiochip_add(gc);
 	if (ret)
 		goto err_free_gpiochip_mask;
+
+	ret = fwnode_gpiochip_add(gc);
+	if (ret)
+		goto err_remove_of_chip;
 
 	ret = gpiochip_init_valid_mask(gc);
 	if (ret)
@@ -3868,6 +3873,8 @@ struct gpio_desc *__must_check gpiod_get_index(struct device *dev,
 	} else if (is_acpi_node(fwnode)) {
 		dev_dbg(dev, "using ACPI for GPIO lookup\n");
 		desc = acpi_find_gpio(dev, con_id, idx, &flags, &lookupflags);
+	} else if (fwnode) {
+		desc = fwnode_find_gpio(fwnode, con_id, idx, &lookupflags);
 	}
 
 	/*

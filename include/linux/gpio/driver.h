@@ -459,6 +459,23 @@ struct gpio_chip {
 	 */
 	unsigned long *valid_mask;
 
+	/**
+	 * @fwnode_gpio_n_cells:
+	 *
+	 * Number fwnode cells used to form the GPIO specifier.
+	 */
+	unsigned int fwnode_gpio_n_cells;
+
+	/**
+	 * @fwnode_xlate:
+	 *
+	 * Callback to translate a fwnode GPIO reference into a chip-relative
+	 * GPIO number and flags.
+	 */
+	int (*fwnode_xlate)(struct gpio_chip *gc,
+			    const struct fwnode_reference_args *args,
+			    unsigned long *flags);
+
 #if defined(CONFIG_OF_GPIO)
 	/*
 	 * If CONFIG_OF_GPIO is enabled, then all GPIO controllers described in
