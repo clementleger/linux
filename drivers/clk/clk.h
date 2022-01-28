@@ -7,6 +7,10 @@
 struct clk_hw;
 struct device;
 struct of_phandle_args;
+struct fwnode_handle;
+
+struct clk_hw *fwnode_clk_get_hw(struct fwnode_handle *np,
+				    int index, const char *con_id);
 
 #if defined(CONFIG_OF) && defined(CONFIG_COMMON_CLK)
 struct clk_hw *of_clk_get_hw(struct device_node *np,
