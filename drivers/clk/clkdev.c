@@ -101,14 +101,24 @@ struct clk *clk_get(struct device *dev, const char *con_id)
 {
 	const char *dev_id = dev ? dev_name(dev) : NULL;
 	struct clk_hw *hw;
+	struct fwnode_handle *node = dev_fwnode(dev);
 
-	if (dev && dev->of_node) {
-		hw = of_clk_get_hw(dev->of_node, 0, con_id);
+	if (node != NULL) {
+		hw = fwnode_clk_get_hw(node, 0, con_id);
 		if (!IS_ERR(hw) || PTR_ERR(hw) == -EPROBE_DEFER)
-			return clk_hw_create_clk(dev, hw, dev_id, con_id);
+			goto create_hw_clk;
+
+		if (is_of_node(node)) {
+			hw = of_clk_get_hw(to_of_node(node), 0, con_id);
+			if (!IS_ERR(hw) || PTR_ERR(hw) == -EPROBE_DEFER)
+				goto create_hw_clk;
+		}
 	}
 
 	return __clk_get_sys(dev, dev_id, con_id);
+
+create_hw_clk:
+	return clk_hw_create_clk(dev, hw, dev_id, con_id);
 }
 EXPORT_SYMBOL(clk_get);
 
