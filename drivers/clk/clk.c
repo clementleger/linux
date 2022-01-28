@@ -4518,13 +4518,376 @@ int devm_clk_notifier_register(struct device *dev, struct clk *clk,
 }
 EXPORT_SYMBOL_GPL(devm_clk_notifier_register);
 
-#ifdef CONFIG_OF
 static void clk_core_reparent_orphans(void)
 {
 	clk_prepare_lock();
 	clk_core_reparent_orphans_nolock();
 	clk_prepare_unlock();
 }
+
+/**
+ * struct fwnode_clk_provider - Clock provider registration structure
+ * @link: Entry in global list of clock providers
+ * @np: Pointer to device firmware node of clock provider
+ * @get: Get clock callback.  Returns NULL or a struct clk for the
+ *       given clock specifier
+ * @get_hw: Get clk_hw callback.  Returns NULL, ERR_PTR or a
+ *       struct clk_hw for the given clock specifier
+ * @data: context pointer to be passed into @get callback
+ */
+struct fwnode_clk_provider {
+	struct list_head link;
+
+	struct fwnode_handle *node;
+	struct clk *(*get)(struct fwnode_reference_args *clkspec, void *data);
+	struct clk_hw *(*get_hw)(struct fwnode_reference_args *clkspec,
+				 void *data);
+	void *data;
+};
+
+static LIST_HEAD(fwnode_clk_providers);
+static DEFINE_MUTEX(fwnode_clk_mutex);
+
+struct clk *fwnode_clk_src_simple_get(struct fwnode_reference_args *clkspec,
+				     void *data)
+{
+	return data;
+}
+EXPORT_SYMBOL_GPL(fwnode_clk_src_simple_get);
+
+struct clk_hw *fwnode_clk_hw_simple_get(struct fwnode_reference_args *clkspec,
+					void *data)
+{
+	return data;
+}
+EXPORT_SYMBOL_GPL(fwnode_clk_hw_simple_get);
+
+struct clk *fwnode_clk_src_onecell_get(struct fwnode_reference_args *clkspec, void *data)
+{
+	struct clk_onecell_data *clk_data = data;
+	unsigned int idx = clkspec->args[0];
+
+	if (idx >= clk_data->clk_num) {
+		pr_err("%s: invalid clock index %u\n", __func__, idx);
+		return ERR_PTR(-EINVAL);
+	}
+
+	return clk_data->clks[idx];
+}
+EXPORT_SYMBOL_GPL(fwnode_clk_src_onecell_get);
+
+struct clk_hw *
+fwnode_clk_hw_onecell_get(struct fwnode_reference_args *clkspec, void *data)
+{
+	struct clk_hw_onecell_data *hw_data = data;
+	unsigned int idx = clkspec->args[0];
+
+	if (idx >= hw_data->num) {
+		pr_err("%s: invalid index %u\n", __func__, idx);
+		return ERR_PTR(-EINVAL);
+	}
+
+	return hw_data->hws[idx];
+}
+EXPORT_SYMBOL_GPL(fwnode_clk_hw_onecell_get);
+
+/**
+ * fwnode_clk_add_provider() - Register a clock provider for a node
+ * @np: Device node pointer associated with clock provider
+ * @clk_src_get: callback for decoding clock
+ * @data: context pointer for @clk_src_get callback.
+ *
+ * This function is *deprecated*. Use of_clk_add_hw_provider() instead.
+ */
+int fwnode_clk_add_provider(struct fwnode_handle *np,
+			    struct clk *(*clk_src_get)(struct fwnode_reference_args *clkspec,
+						       void *data),
+			    void *data)
+{
+	struct fwnode_clk_provider *cp;
+	int ret;
+
+	if (!np)
+		return 0;
+
+	cp = kzalloc(sizeof(*cp), GFP_KERNEL);
+	if (!cp)
+		return -ENOMEM;
+
+	cp->node = fwnode_handle_get(np);
+	cp->data = data;
+	cp->get = clk_src_get;
+
+	mutex_lock(&fwnode_clk_mutex);
+	list_add(&cp->link, &fwnode_clk_providers);
+	mutex_unlock(&fwnode_clk_mutex);
+	pr_err("Added clock from %s\n", fwnode_get_name(np));
+
+	clk_core_reparent_orphans();
+
+	if (is_of_node(np)) {
+		ret = of_clk_set_defaults(to_of_node(np), true);
+		if (ret < 0)
+			fwnode_clk_del_provider(np);
+	}
+
+	fwnode_dev_initialized(np, true);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(fwnode_clk_add_provider);
+
+/**
+ * of_clk_add_hw_provider() - Register a clock provider for a node
+ * @np: fwnode pointer associated with clock provider
+ * @get: callback for decoding clk_hw
+ * @data: context pointer for @get callback.
+ */
+int fwnode_clk_add_hw_provider(struct fwnode_handle *np,
+			       struct clk_hw *(*get)(struct fwnode_reference_args *clkspec,
+						 void *data),
+			       void *data)
+{
+	struct fwnode_clk_provider *cp;
+	int ret;
+
+	if (!np)
+		return 0;
+
+	cp = kzalloc(sizeof(*cp), GFP_KERNEL);
+	if (!cp)
+		return -ENOMEM;
+
+	cp->node = fwnode_handle_get(np);
+	cp->data = data;
+	cp->get_hw = get;
+
+	mutex_lock(&fwnode_clk_mutex);
+	list_add(&cp->link, &fwnode_clk_providers);
+	mutex_unlock(&fwnode_clk_mutex);
+	pr_debug("Added clk_hw provider from %s\n", fwnode_get_name(np));
+
+	clk_core_reparent_orphans();
+
+	if (is_of_node(np)) {
+		ret = of_clk_set_defaults(to_of_node(np), true);
+		if (ret < 0)
+			fwnode_clk_del_provider(np);
+	}
+
+	fwnode_dev_initialized(np, true);
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(fwnode_clk_add_hw_provider);
+
+static void devm_fwnode_clk_release_provider(struct device *dev, void *res)
+{
+	fwnode_clk_del_provider(*(struct fwnode_handle **)res);
+}
+
+/*
+ * We allow a child device to use its parent device as the clock provider node
+ * for cases like MFD sub-devices where the child device driver wants to use
+ * devm_*() APIs but not list the device in DT as a sub-node.
+ */
+static struct fwnode_handle *fwnode_get_clk_provider_node(struct device *dev)
+{
+	struct fwnode_handle *np, *parent_np;
+
+	np = dev_fwnode(dev);
+	parent_np = dev->parent ? dev_fwnode(dev->parent) : NULL;
+
+	if (!fwnode_property_present(np, "#clock-cells"))
+		if (fwnode_property_present(parent_np, "#clock-cells"))
+			np = parent_np;
+
+	return np;
+}
+
+/**
+ * devm_fwnode_clk_add_hw_provider() - Managed clk provider node registration
+ * @dev: Device acting as the clock provider (used for DT node and lifetime)
+ * @get: callback for decoding clk_hw
+ * @data: context pointer for @get callback
+ *
+ * Registers clock provider for given device's node. If the device has no DT
+ * node or if the device node lacks of clock provider information (#clock-cells)
+ * then the parent device's node is scanned for this information. If parent node
+ * has the #clock-cells then it is used in registration. Provider is
+ * automatically released at device exit.
+ *
+ * Return: 0 on success or an errno on failure.
+ */
+int devm_fwnode_clk_add_hw_provider(struct device *dev,
+				    struct clk_hw *(*get)(struct fwnode_reference_args *clkspec,
+							  void *data),
+				    void *data)
+{
+	struct fwnode_handle **ptr, *np;
+	int ret;
+
+	ptr = devres_alloc(devm_fwnode_clk_release_provider, sizeof(*ptr),
+			   GFP_KERNEL);
+	if (!ptr)
+		return -ENOMEM;
+
+	np = fwnode_get_clk_provider_node(dev);
+	ret = fwnode_clk_add_hw_provider(np, get, data);
+	if (!ret) {
+		*ptr = np;
+		devres_add(dev, ptr);
+	} else {
+		devres_free(ptr);
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(devm_fwnode_clk_add_hw_provider);
+
+/**
+ * fwnode_clk_del_provider() - Remove a previously registered clock provider
+ * @np: fwnode pointer associated with clock provider
+ */
+void fwnode_clk_del_provider(struct fwnode_handle *np)
+{
+	struct fwnode_clk_provider *cp;
+
+	if (!np)
+		return;
+
+	mutex_lock(&fwnode_clk_mutex);
+	list_for_each_entry(cp, &fwnode_clk_providers, link) {
+		if (cp->node == np) {
+			list_del(&cp->link);
+			fwnode_dev_initialized(np, false);
+			fwnode_handle_put(cp->node);
+			kfree(cp);
+			break;
+		}
+	}
+	mutex_unlock(&fwnode_clk_mutex);
+}
+EXPORT_SYMBOL_GPL(fwnode_clk_del_provider);
+
+static int devm_fwnode_clk_provider_match(struct device *dev, void *res,
+					  void *data)
+{
+	struct fwnode_handle **np = res;
+
+	if (WARN_ON(!np || !*np))
+		return 0;
+
+	return *np == data;
+}
+
+/**
+ * devm_fwnode_clk_del_provider() - Remove clock provider registered using devm
+ * @dev: Device to whose lifetime the clock provider was bound
+ */
+void devm_fwnode_clk_del_provider(struct device *dev)
+{
+	int ret;
+	struct fwnode_handle *np = fwnode_get_clk_provider_node(dev);
+
+	ret = devres_release(dev, devm_fwnode_clk_release_provider,
+			     devm_fwnode_clk_provider_match, np);
+
+	WARN_ON(ret);
+}
+EXPORT_SYMBOL(devm_fwnode_clk_del_provider);
+
+static int fwnode_parse_clkspec(const struct fwnode_handle *np, int index,
+			    const char *name, struct fwnode_reference_args *out_args)
+{
+	int ret = -ENOENT;
+
+	/* Walk up the tree of devices looking for a clock property that matches */
+	while (np) {
+		/*
+		 * For named clocks, first look up the name in the
+		 * "clock-names" property.  If it cannot be found, then index
+		 * will be an error code and of_parse_phandle_with_args() will
+		 * return -EINVAL.
+		 */
+		if (name)
+			index = fwnode_property_match_string(np, "clock-names", name);
+		ret = fwnode_property_get_reference_args(np, "clocks", "#clock-cells", 0,
+						 index, out_args);
+		if (!ret)
+			break;
+		if (name && index >= 0)
+			break;
+
+		/*
+		 * No matching clock found on this node.  If the parent node
+		 * has a "clock-ranges" property, then we can try one of its
+		 * clocks.
+		 */
+		np = fwnode_get_parent(np);
+		if (np && !fwnode_property_present(np, "clock-ranges"))
+			break;
+		index = 0;
+	}
+
+	return ret;
+}
+
+static struct clk_hw *
+__fwnode_clk_get_hw_from_provider(struct fwnode_clk_provider *provider,
+			      struct fwnode_reference_args *clkspec)
+{
+	struct clk *clk;
+
+	if (provider->get_hw)
+		return provider->get_hw(clkspec, provider->data);
+
+	clk = provider->get(clkspec, provider->data);
+	if (IS_ERR(clk))
+		return ERR_CAST(clk);
+	return __clk_get_hw(clk);
+}
+
+static struct clk_hw *
+fwnode_clk_get_hw_from_clkspec(struct fwnode_reference_args *clkspec)
+{
+	struct fwnode_clk_provider *provider;
+	struct clk_hw *hw = ERR_PTR(-EPROBE_DEFER);
+
+	if (!clkspec)
+		return ERR_PTR(-EINVAL);
+
+	mutex_lock(&fwnode_clk_mutex);
+	list_for_each_entry(provider, &fwnode_clk_providers, link) {
+		if (provider->node == clkspec->fwnode) {
+			hw = __fwnode_clk_get_hw_from_provider(provider, clkspec);
+			if (!IS_ERR(hw))
+				break;
+		}
+	}
+	mutex_unlock(&fwnode_clk_mutex);
+
+	return hw;
+}
+
+struct clk_hw *fwnode_clk_get_hw(struct fwnode_handle *np, int index,
+			     const char *con_id)
+{
+	int ret;
+	struct clk_hw *hw;
+	struct fwnode_reference_args clkspec;
+
+	ret = fwnode_parse_clkspec(np, index, con_id, &clkspec);
+	if (ret)
+		return ERR_PTR(ret);
+
+	hw = fwnode_clk_get_hw_from_clkspec(&clkspec);
+	fwnode_handle_put(clkspec.fwnode);
+
+	return hw;
+}
+
+#ifdef CONFIG_OF
 
 /**
  * struct of_clk_provider - Clock provider registration structure

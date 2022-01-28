@@ -1405,6 +1405,19 @@ struct clk_hw_onecell_data {
 						      _flags),		\
 	}
 
+int fwnode_clk_add_hw_provider(struct fwnode_handle *np,
+			       struct clk_hw *(*get)(struct fwnode_reference_args *clkspec,
+						 void *data),
+			       void *data);
+void fwnode_clk_del_provider(struct fwnode_handle *np);
+int devm_fwnode_clk_add_hw_provider(struct device *dev,
+				    struct clk_hw *(*get)(struct fwnode_reference_args *clkspec,
+							  void *data),
+				    void *data);
+struct clk_hw *fwnode_clk_hw_simple_get(struct fwnode_reference_args *clkspec,
+					void *data);
+struct clk_hw *fwnode_clk_hw_onecell_get(struct fwnode_reference_args *clkspec,
+					 void *data);
 #ifdef CONFIG_OF
 int of_clk_add_provider(struct device_node *np,
 			struct clk *(*clk_src_get)(struct of_phandle_args *args,
