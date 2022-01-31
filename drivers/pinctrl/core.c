@@ -33,6 +33,7 @@
 
 #include "core.h"
 #include "devicetree.h"
+#include "fwnode.h"
 #include "pinmux.h"
 #include "pinconf.h"
 
@@ -1066,6 +1067,13 @@ static struct pinctrl *create_pinctrl(struct device *dev,
 	p->dev = dev;
 	INIT_LIST_HEAD(&p->states);
 	INIT_LIST_HEAD(&p->dt_maps);
+	INIT_LIST_HEAD(&p->fwnode_maps);
+
+	ret = pinctrl_fwnode_to_map(p, pctldev);
+	if (ret < 0) {
+		kfree(p);
+		return ERR_PTR(ret);
+	}
 
 	ret = pinctrl_dt_to_map(p, pctldev);
 	if (ret < 0) {
@@ -1192,6 +1200,7 @@ static void pinctrl_free(struct pinctrl *p, bool inlist)
 	}
 
 	pinctrl_dt_free_maps(p);
+	pinctrl_fwnode_free_maps(p);
 
 	if (inlist)
 		list_del(&p->node);
