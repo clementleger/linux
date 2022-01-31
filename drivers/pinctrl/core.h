@@ -72,6 +72,8 @@ struct pinctrl_dev {
  * @state: the current state
  * @dt_maps: the mapping table chunks dynamically parsed from device tree for
  *	this device, if any
+ * @fwnode_maps: the mapping table chunks dynamically parsed from fwnode for
+ *	this device, if any
  * @users: reference count
  */
 struct pinctrl {
@@ -80,6 +82,7 @@ struct pinctrl {
 	struct list_head states;
 	struct pinctrl_state *state;
 	struct list_head dt_maps;
+	struct list_head fwnode_maps;
 	struct kref users;
 };
 

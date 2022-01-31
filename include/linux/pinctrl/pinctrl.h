@@ -100,6 +100,10 @@ struct pinctrl_ops {
 			       struct pinctrl_map **map, unsigned *num_maps);
 	void (*dt_free_map) (struct pinctrl_dev *pctldev,
 			     struct pinctrl_map *map, unsigned num_maps);
+	int (*fwnode_to_map) (struct pinctrl_dev *pctldev,
+			      struct fwnode_handle *np_config,
+			      struct pinctrl_map **map,
+			      unsigned int *num_maps);
 };
 
 /**

@@ -3,7 +3,7 @@
 
 subdir-ccflags-$(CONFIG_DEBUG_PINCTRL)	+= -DDEBUG
 
-obj-y				+= core.o pinctrl-utils.o
+obj-y				+= core.o pinctrl-utils.o fwnode.o
 obj-$(CONFIG_PINMUX)		+= pinmux.o
 obj-$(CONFIG_PINCONF)		+= pinconf.o
 obj-$(CONFIG_OF)		+= devicetree.o
