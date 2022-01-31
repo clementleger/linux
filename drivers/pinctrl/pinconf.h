@@ -123,9 +123,15 @@ static inline void pinconf_generic_dump_config(struct pinctrl_dev *pctldev,
 }
 #endif
 
+int pinconf_generic_parse_fwnode_config(struct fwnode_handle *np,
+				    struct pinctrl_dev *pctldev,
+				    unsigned long **configs,
+				    unsigned int *nconfigs);
+
 #if defined(CONFIG_GENERIC_PINCONF) && defined(CONFIG_OF)
 int pinconf_generic_parse_dt_config(struct device_node *np,
 				    struct pinctrl_dev *pctldev,
 				    unsigned long **configs,
 				    unsigned int *nconfigs);
+
 #endif

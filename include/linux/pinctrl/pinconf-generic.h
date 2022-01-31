@@ -183,6 +183,22 @@ struct pinconf_generic_params {
 	u32 default_value;
 };
 
+int pinconf_generic_fwnode_subnode_to_map(struct pinctrl_dev *pctldev,
+		struct fwnode_handle *np, struct pinctrl_map **map,
+		unsigned int *reserved_maps, unsigned int *num_maps,
+		enum pinctrl_map_type type);
+int pinconf_generic_fwnode_to_map(struct pinctrl_dev *pctldev,
+		struct fwnode_handle *np_config, struct pinctrl_map **map,
+		unsigned int *num_maps, enum pinctrl_map_type type);
+
+static inline int pinconf_generic_fwnode_to_map_pin(
+		struct pinctrl_dev *pctldev, struct fwnode_handle *np_config,
+		struct pinctrl_map **map, unsigned int *num_maps)
+{
+	return pinconf_generic_fwnode_to_map(pctldev, np_config, map, num_maps,
+			PIN_MAP_TYPE_CONFIGS_PIN);
+}
+
 int pinconf_generic_dt_subnode_to_map(struct pinctrl_dev *pctldev,
 		struct device_node *np, struct pinctrl_map **map,
 		unsigned *reserved_maps, unsigned *num_maps,
