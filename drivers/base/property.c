@@ -417,10 +417,11 @@ EXPORT_SYMBOL_GPL(fwnode_property_read_string);
  * fwnode_property_match_string - find a string in an array and return index
  * @fwnode: Firmware node to get the property of
  * @propname: Name of the property holding the array
- * @string: String to look for
+ * @callback: callback to execute on the string array
+ * @data: data to be passed to the callback
  *
- * Find a given string in a string array and if it is found return the
- * index back.
+ * Execute a given callback on a string array values and returns the callback
+ * return value.
  *
  * Return: %0 if the property was found (success),
  *	   %-EINVAL if given arguments are not valid,
@@ -428,8 +429,10 @@ EXPORT_SYMBOL_GPL(fwnode_property_read_string);
  *	   %-EPROTO if the property is not an array of strings,
  *	   %-ENXIO if no suitable firmware interface is present.
  */
-int fwnode_property_match_string(const struct fwnode_handle *fwnode,
-	const char *propname, const char *string)
+static int fwnode_property_string_match(const struct fwnode_handle *fwnode,
+					const char *propname,
+					int (*cb)(const char **, int, void *),
+					void *data)
 {
 	const char **values;
 	int nval, ret;
@@ -449,14 +452,97 @@ int fwnode_property_match_string(const struct fwnode_handle *fwnode,
 	if (ret < 0)
 		goto out;
 
-	ret = match_string(values, nval, string);
+	ret = cb(values, nval, data);
 	if (ret < 0)
 		ret = -ENODATA;
 out:
 	kfree(values);
 	return ret;
 }
+
+static int match_string_callback(const char **values, int nval, void *data)
+{
+	int ret;
+	const char *string = data;
+
+	ret = match_string(values, nval, string);
+	if (ret < 0)
+		ret = -ENODATA;
+
+	return ret;
+}
+
+/**
+ * fwnode_property_match_string - find a string in an array and return index
+ * @fwnode: Firmware node to get the property of
+ * @propname: Name of the property holding the array
+ * @string: String to look for
+ *
+ * Find a given string in a string array and if it is found return the
+ * index back.
+ *
+ * Return: %0 if the property was found (success),
+ *	   %-EINVAL if given arguments are not valid,
+ *	   %-ENODATA if the property does not have a value,
+ *	   %-EPROTO if the property is not an array of strings,
+ *	   %-ENXIO if no suitable firmware interface is present.
+ */
+int fwnode_property_match_string(const struct fwnode_handle *fwnode,
+	const char *propname, const char *string)
+{
+	return fwnode_property_string_match(fwnode, propname,
+					    match_string_callback,
+					    (void *) string);
+}
 EXPORT_SYMBOL_GPL(fwnode_property_match_string);
+
+struct read_index_data {
+	const char **string;
+	int index;
+};
+
+static int read_string_index(const char **values, int nval, void *data)
+{
+	struct read_index_data *cb_data = data;
+
+	if (cb_data->index >= nval)
+		return -EINVAL;
+
+	*cb_data->string = values[cb_data->index];
+
+	return 0;
+}
+
+/**
+ * fwnode_property_read_string_index - read a string in an array using an index
+ * and return a pointer to the string
+ * @fwnode: Firmware node to get the property of
+ * @propname: Name of the property holding the array
+ * @index: Index of the string to look for
+ * @string: Pointer to the string if found
+ *
+ * Find a given string in a string array and if it is found return the
+ * index back.
+ *
+ * Return: %0 if the property was found (success),
+ *	   %-EINVAL if given arguments are not valid,
+ *	   %-ENODATA if the property does not have a value,
+ *	   %-EPROTO if the property is not an array of strings,
+ *	   %-ENXIO if no suitable firmware interface is present.
+ */
+int fwnode_property_read_string_index(const struct fwnode_handle *fwnode,
+	const char *propname, int index, const char **string)
+{
+	struct read_index_data cb_data;
+
+	cb_data.index = index;
+	cb_data.string = string;
+
+	return fwnode_property_string_match(fwnode, propname, read_string_index,
+					    &cb_data);
+}
+EXPORT_SYMBOL_GPL(fwnode_property_read_string_index);
+
 
 /**
  * fwnode_property_get_reference_args() - Find a reference with arguments
