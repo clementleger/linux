@@ -49,47 +49,6 @@ static const resource_size_t bar_offsets[] = {
 	[LAN966X_BAR_AMBA] = LAN966X_BAR_AMBA_OFFSET,
 };
 
-static unsigned long i2c_pin_low_configs[] = {
-	PIN_CONF_PACKED(PIN_CONFIG_OUTPUT, 0),
-};
-
-static unsigned long i2c_pin_high_configs[] = {
-	PIN_CONF_PACKED(PIN_CONFIG_OUTPUT, 1),
-};
-
-static const struct pinctrl_map lan966x_pinmap[] = {
-	PIN_MAP_MUX_GROUP_DEFAULT("lan966x-i2c.0", "pinctrl-lan966x.0",
-				  "GPIO_9", "fc0_a"),
-	PIN_MAP_MUX_GROUP_DEFAULT("lan966x-i2c.0", "pinctrl-lan966x.0",
-				  "GPIO_10", "fc0_a"),
-
-	/* i2c102: i2cmux_0, output-high */
-	PIN_MAP_MUX_GROUP("i2c-mux-pinctrl.0", "i2c102", "pinctrl-lan966x.0",
-			  "GPIO_76", "twi_slc_gate"),
-	PIN_MAP_CONFIGS_PIN("i2c-mux-pinctrl.0", "i2c102", "pinctrl-lan966x.0",
-			    "GPIO_76", i2c_pin_high_configs),
-
-	/* i2c103: i2cmux_1, output-high */
-	PIN_MAP_MUX_GROUP("i2c-mux-pinctrl.0", "i2c103", "pinctrl-lan966x.0",
-			  "GPIO_77", "twi_slc_gate"),
-	PIN_MAP_CONFIGS_PIN("i2c-mux-pinctrl.0", "i2c103", "pinctrl-lan966x.0",
-			    "GPIO_77", i2c_pin_high_configs),
-
-	/* idle: i2cmux_pins, output-low */
-	PIN_MAP_MUX_GROUP("i2c-mux-pinctrl.0", "idle", "pinctrl-lan966x.0",
-			  "GPIO_76", "twi_slc_gate"),
-	PIN_MAP_MUX_GROUP("i2c-mux-pinctrl.0", "idle", "pinctrl-lan966x.0",
-			  "GPIO_77", "twi_slc_gate"),
-	PIN_MAP_CONFIGS_PIN("i2c-mux-pinctrl.0", "idle", "pinctrl-lan966x.0",
-			    "GPIO_76", i2c_pin_low_configs),
-	PIN_MAP_CONFIGS_PIN("i2c-mux-pinctrl.0", "idle", "pinctrl-lan966x.0",
-			    "GPIO_77", i2c_pin_low_configs),
-
-	/* Switch PTP */
-	PIN_MAP_MUX_GROUP_DEFAULT("lan966x-switch.0", "pinctrl-lan966x.0",
-			  "GPIO_36", "ptpsync_1"),
-};
-
 /* Fixed-clocks */
 static const struct property_entry cpu_clk_props[] = {
 	PROPERTY_ENTRY_U32("clock-frequency", 600000000),
@@ -138,6 +97,84 @@ static const struct software_node lan966x_clk_node = {
 /* PINCTRL */
 static const struct software_node lan966x_pinctrl_node;
 
+/* I2C SDA/SCL configuration */
+static const char * const i2c_pins[] = {
+	"GPIO_9",
+	"GPIO_10",
+};
+
+static const struct property_entry lan966x_i2c_pinctrl_props[] = {
+	PROPERTY_ENTRY_STRING_ARRAY("pins", i2c_pins),
+	PROPERTY_ENTRY_STRING("function", "fc0_a"),
+	{}
+};
+
+static const struct software_node lan966x_i2c_pinmux_node = {
+	.name = "i2c-pinctrl-0",
+	.properties = lan966x_i2c_pinctrl_props,
+	.parent = &lan966x_pinctrl_node,
+};
+
+/* I2C idle pinmux configuration */
+static const char * const i2c_mux_pins[] = {
+	"GPIO_76",
+	"GPIO_77",
+};
+
+static const struct property_entry lan966x_i2c_idle_pinmux_props[] = {
+	PROPERTY_ENTRY_STRING_ARRAY("pins", i2c_mux_pins),
+	PROPERTY_ENTRY_STRING("function", "twi_slc_gate"),
+	PROPERTY_ENTRY_BOOL("output-low"),
+	{}
+};
+
+static const struct software_node lan966x_i2c_idle_pinmux_node = {
+	.name = "i2c-idle-pinmux",
+	.properties = lan966x_i2c_idle_pinmux_props,
+	.parent = &lan966x_pinctrl_node,
+};
+
+/* I2C i2c102 pinmux configuration */
+static const struct property_entry lan966x_i2c_i2c102_pinmux_props[] = {
+	PROPERTY_ENTRY_STRING("pins", "GPIO_76"),
+	PROPERTY_ENTRY_STRING("function", "twi_slc_gate"),
+	PROPERTY_ENTRY_BOOL("output-high"),
+	{}
+};
+
+static const struct software_node lan966x_i2c_i2c102_pinmux_node = {
+	.name = "i2c-i2c102-pinmux",
+	.properties = lan966x_i2c_i2c102_pinmux_props,
+	.parent = &lan966x_pinctrl_node,
+};
+
+/* I2C i2c103 pinmux configuration */
+static const struct property_entry lan966x_i2c_i2c103_pinmux_props[] = {
+	PROPERTY_ENTRY_STRING("pins", "GPIO_77"),
+	PROPERTY_ENTRY_STRING("function", "twi_slc_gate"),
+	PROPERTY_ENTRY_BOOL("output-high"),
+	{}
+};
+
+static const struct software_node lan966x_i2c_i2c103_pinmux_node = {
+	.name = "i2c-i2c103-pinmux",
+	.properties = lan966x_i2c_i2c103_pinmux_props,
+	.parent = &lan966x_pinctrl_node,
+};
+
+/* Switch PTP pin */
+static const struct property_entry lan966x_switch_ptp_pinmux_props[] = {
+	PROPERTY_ENTRY_STRING("pins", "GPIO_36"),
+	PROPERTY_ENTRY_STRING("function", "ptpsync_1"),
+	{}
+};
+
+static const struct software_node lan966x_switch_ptp_pinmux_node = {
+	.name = "ptp-pinmux",
+	.properties = lan966x_switch_ptp_pinmux_props,
+	.parent = &lan966x_pinctrl_node,
+};
+
 static const struct property_entry lan966x_pinctrl_props[] = {
 	PROPERTY_ENTRY_STRING("compatible", "microchip,lan966x-pinctrl"),
 	PROPERTY_ENTRY_U32("#gpio-cells", 2),
@@ -168,6 +205,8 @@ static const struct property_entry lan966x_i2c_props[] = {
 	PROPERTY_ENTRY_BOOL("i2c-digital-filter"),
 	PROPERTY_ENTRY_U32("i2c-digital-filter-width-ns", 35),
 	PROPERTY_ENTRY_REF("clocks", &lan966x_clk_node, GCK_ID_FLEXCOM0),
+	PROPERTY_ENTRY_STRING("pinctrl-names", "default"),
+	PROPERTY_ENTRY_REF("pinctrl-0", &lan966x_i2c_pinmux_node),
 	{ }
 };
 
@@ -182,6 +221,9 @@ static const char *pinctrl_names[] = { "i2c102", "i2c103", "idle" };
 static const struct property_entry lan966x_i2c_mux_pinctrl_props[] = {
 	PROPERTY_ENTRY_STRING_ARRAY("pinctrl-names", pinctrl_names),
 	PROPERTY_ENTRY_REF("i2c-parent", &lan966x_i2c_node),
+	PROPERTY_ENTRY_REF("pinctrl-0", &lan966x_i2c_i2c102_pinmux_node),
+	PROPERTY_ENTRY_REF("pinctrl-1", &lan966x_i2c_i2c103_pinmux_node),
+	PROPERTY_ENTRY_REF("pinctrl-2", &lan966x_i2c_idle_pinmux_node),
 	{ }
 };
 
@@ -329,6 +371,8 @@ static const struct property_entry lan966x_switch_props[] = {
 	PROPERTY_ENTRY_STRING("compatible", "microchip,lan966x-switch"),
 	PROPERTY_ENTRY_STRING_ARRAY("reset-names", switch_reset_names),
 	PROPERTY_ENTRY_REF_ARRAY("resets", switch_resets),
+	PROPERTY_ENTRY_STRING("pinctrl-names", "default"),
+	PROPERTY_ENTRY_REF("pinctrl-0", &lan966x_switch_ptp_pinmux_node),
 };
 
 static const struct software_node lan966x_switch_node = {
@@ -549,17 +593,14 @@ static struct resource lan966x_switch_res[] = {
 
 static struct mfd_cell lan966x_pci_mfd_cells[] = {
 	[LAN966X_DEV_CPU_CLK] = {
-		.id = PLATFORM_DEVID_AUTO,
 		.name = "of_fixed_clk",
 		.swnode = &cpu_clk_node,
 	},
 	[LAN966X_DEV_DDR_CLK] = {
-		.id = PLATFORM_DEVID_AUTO,
 		.name = "of_fixed_clk",
 		.swnode = &ddr_clk_node,
 	},
 	[LAN966X_DEV_SYS_CLK] = {
-		.id = PLATFORM_DEVID_AUTO,
 		.name = "of_fixed_clk",
 		.swnode = &sys_clk_node,
 	},
@@ -592,52 +633,44 @@ static struct mfd_cell lan966x_pci_mfd_cells[] = {
 		.swnode = &lan966x_i2c_mux_pinctrl_node,
 	},
 	[LAN966X_DEV_SFP0] = {
-		.id = PLATFORM_DEVID_AUTO,
 		.name = "sfp",
 		.swnode = &lan966x_sfp0_node,
 	},
 	[LAN966X_DEV_SFP1] = {
-		.id = PLATFORM_DEVID_AUTO,
 		.name = "sfp",
 		.swnode = &lan966x_sfp1_node,
 	},
 	[LAN966X_DEV_CPU_CTRL] = {
-		.id = PLATFORM_DEVID_AUTO,
 		.name = "syscon",
 		.num_resources = ARRAY_SIZE(lan966x_cpu_ctrl_res),
 		.resources = lan966x_cpu_ctrl_res,
 		.swnode = &lan966x_cpu_ctrl_node,
 	},
 	[LAN966X_DEV_SWITCH_RESET] = {
-		.id = PLATFORM_DEVID_AUTO,
 		.num_resources = ARRAY_SIZE(lan966x_switch_reset_res),
 		.resources = lan966x_switch_reset_res,
 		.name = "sparx5-switch-reset",
 		.swnode = &lan966x_switch_reset_node,
 	},
 	[LAN966X_DEV_PHY_RESET] = {
-		.id = PLATFORM_DEVID_AUTO,
 		.name = "lan966x-phy-reset",
 		.num_resources = ARRAY_SIZE(lan966x_phy_reset_res),
 		.resources = lan966x_phy_reset_res,
 		.swnode = &lan966x_phy_reset_node,
 	},
 	[LAN966X_DEV_MDIO1] = {
-		.id = PLATFORM_DEVID_AUTO,
 		.name = "mscc-miim",
 		.num_resources = ARRAY_SIZE(lan966x_mdio1_res),
 		.resources = lan966x_mdio1_res,
 		.swnode = &lan966x_mdio1_node,
 	},
 	[LAN966X_DEV_SERDES] = {
-		.id = PLATFORM_DEVID_AUTO,
 		.name = "microchip,lan966x-serdes",
 		.num_resources = ARRAY_SIZE(lan966x_serdes_res),
 		.resources = lan966x_serdes_res,
 		.swnode = &lan966x_serdes_node,
 	},
 	[LAN966X_DEV_SWITCH] = {
-		.id = PLATFORM_DEVID_AUTO,
 		.name = "lan966x-switch",
 		.num_resources = ARRAY_SIZE(lan966x_switch_res),
 		.resources = lan966x_switch_res,
@@ -651,6 +684,11 @@ static const struct software_node *lan966x_nodes[] = {
 	&sys_clk_node,
 	&lan966x_clk_node,
 	&lan966x_pinctrl_node,
+	&lan966x_i2c_pinmux_node,
+	&lan966x_i2c_idle_pinmux_node,
+	&lan966x_i2c_i2c102_pinmux_node,
+	&lan966x_i2c_i2c103_pinmux_node,
+	&lan966x_switch_ptp_pinmux_node,
 	&lan966x_flexcom_node,
 	&lan966x_i2c_node,
 	&lan966x_i2c_mux_pinctrl_node,
@@ -704,7 +742,7 @@ static int lan966x_pci_setup_resource(struct lan966x_pci *data,
 
 			if (r->end > pci_resource_end(pdev, bar_id)) {
 				dev_err(&pdev->dev, "Resource too large for bar %d\n", bar_id);
-				// return -EINVAL;
+				return -EINVAL;
 			}
 		} else if (r->flags == IORESOURCE_IRQ) {
 			r->start = irq_find_mapping(data->irq_data.domain, r->start);
@@ -737,23 +775,6 @@ static int lan966x_pci_setup_resources(struct lan966x_pci *data,
 	}
 
 	return 0;
-}
-
-static int lan966x_pinctrl_maps_register(void)
-{
-	int ret;
-
-	ret = pinctrl_register_mappings(lan966x_pinmap,
-					ARRAY_SIZE(lan966x_pinmap));
-	if (ret)
-		pr_err("Failed to register pin map\n");
-
-	return ret;
-}
-
-static void lan966x_pinctrl_maps_unregister(void)
-{
-	pinctrl_unregister_mappings(lan966x_pinmap);
 }
 
 static int reset_switch(struct pci_dev *pdev)
@@ -822,15 +843,12 @@ static int lan966x_pci_probe(struct pci_dev *pdev,
 	if (ret)
 		goto err_free_irq;
 
-	ret = lan966x_pinctrl_maps_register();
+	ret = software_node_register_node_group(lan966x_nodes);
 	if (ret)
 		goto err_free_irq;
 
-	ret = software_node_register_node_group(lan966x_nodes);
-	if (ret)
-		goto err_unregister_maps;
-
-	ret = devm_mfd_add_devices(dev, 0, lan966x_pci_mfd_cells,
+	ret = devm_mfd_add_devices(dev, PLATFORM_DEVID_AUTO,
+				   lan966x_pci_mfd_cells,
 				   ARRAY_SIZE(lan966x_pci_mfd_cells), NULL, 0,
 				   NULL);
 	if (ret)
@@ -840,8 +858,6 @@ static int lan966x_pci_probe(struct pci_dev *pdev,
 
 err_unregister_nodes:
 	software_node_unregister_node_group(lan966x_nodes);
-err_unregister_maps:
-	lan966x_pinctrl_maps_unregister();
 err_free_irq:
 	lan966x_pci_irq_remove(pdev, &data->irq_data);
 
@@ -856,7 +872,6 @@ static void lan966x_pci_remove(struct pci_dev *pdev)
 
 	lan966x_pci_irq_remove(pdev, &data->irq_data);
 	software_node_unregister_node_group(lan966x_nodes);
-	lan966x_pinctrl_maps_unregister();
 }
 
 static struct pci_driver lan966x_pci_driver = {
