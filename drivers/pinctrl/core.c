@@ -136,7 +136,7 @@ struct pinctrl_dev *get_pinctrl_dev_from_of_node(struct device_node *np)
 	return NULL;
 }
 
-static struct pinctrl_dev *get_pinctrl_dev_from_fwnode(struct fwnode_handle *fwnode)
+struct pinctrl_dev *get_pinctrl_dev_from_fwnode(struct fwnode_handle *fwnode)
 {
 	struct pinctrl_dev *pctldev;
 
