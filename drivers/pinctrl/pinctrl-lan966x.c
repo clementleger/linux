@@ -23,6 +23,7 @@
 
 #include "core.h"
 #include "pinconf.h"
+#include "pinctrl-utils.h"
 #include "pinmux.h"
 
 #define lan966x_clrsetbits(addr, clear, set) \
@@ -791,9 +792,10 @@ static const struct pinctrl_ops lan966x_pctl_ops = {
 	.get_groups_count = lan966x_pctl_get_groups_count,
 	.get_group_name = lan966x_pctl_get_group_name,
 	.get_group_pins = lan966x_pctl_get_group_pins,
+	.fwnode_to_map = pinconf_generic_fwnode_to_map_pin,
+	.dt_free_map = pinctrl_utils_free_map,
 #ifdef CONFIG_OF
 	.dt_node_to_map = pinconf_generic_dt_node_to_map_pin,
-	.dt_free_map = pinconf_generic_dt_free_map,
 #endif
 };
 
