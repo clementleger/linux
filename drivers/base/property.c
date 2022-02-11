@@ -1197,6 +1197,33 @@ int fwnode_graph_parse_endpoint(const struct fwnode_handle *fwnode,
 }
 EXPORT_SYMBOL(fwnode_graph_parse_endpoint);
 
+const struct of_device_id *fwnode_match_node(const struct fwnode_handle *fwnode,
+					     const struct of_device_id *matches)
+{
+	if (!matches)
+		return NULL;
+
+	for (; matches->name[0] || matches->type[0] || matches->compatible[0]; matches++) {
+		if (fwnode_is_compatible(fwnode, matches->compatible))
+			return matches;
+	}
+
+	return NULL;
+}
+EXPORT_SYMBOL(fwnode_match_node);
+
+const void *fwnode_get_match_data(const struct fwnode_handle *fwnode,
+				   const struct device *dev)
+{
+	const struct of_device_id *match;
+
+	match = fwnode_match_node(fwnode, dev->driver->of_match_table);
+	if (!match)
+		return NULL;
+
+	return match->data;
+}
+
 const void *device_get_match_data(struct device *dev)
 {
 	return fwnode_call_ptr_op(dev_fwnode(dev), device_get_match_data, dev);
