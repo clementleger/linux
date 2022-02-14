@@ -188,7 +188,7 @@ static int mtk_mmsys_probe(struct platform_device *pdev)
 	mmsys->rcdev.owner = THIS_MODULE;
 	mmsys->rcdev.nr_resets = 32;
 	mmsys->rcdev.ops = &mtk_mmsys_reset_ops;
-	mmsys->rcdev.of_node = pdev->dev.of_node;
+	mmsys->rcdev.fwnode = dev_fwnode(&pdev->dev);
 	ret = devm_reset_controller_register(&pdev->dev, &mmsys->rcdev);
 	if (ret) {
 		dev_err(&pdev->dev, "Couldn't register mmsys reset controller: %d\n", ret);

@@ -858,7 +858,7 @@ static const struct reset_control_ops omap_reset_ops = {
 };
 
 static int omap_prm_reset_xlate(struct reset_controller_dev *rcdev,
-				const struct of_phandle_args *reset_spec)
+				const struct fwnode_reference_args *reset_spec)
 {
 	struct omap_reset_data *reset = to_omap_reset_data(rcdev);
 
@@ -900,10 +900,10 @@ static int omap_prm_reset_init(struct platform_device *pdev,
 
 	reset->rcdev.owner = THIS_MODULE;
 	reset->rcdev.ops = &omap_reset_ops;
-	reset->rcdev.of_node = pdev->dev.of_node;
+	reset->rcdev.fwnode = dev_fwnode(&pdev->dev);
 	reset->rcdev.nr_resets = OMAP_MAX_RESETS;
-	reset->rcdev.of_xlate = omap_prm_reset_xlate;
-	reset->rcdev.of_reset_n_cells = 1;
+	reset->rcdev.fwnode_xlate = omap_prm_reset_xlate;
+	reset->rcdev.fwnode_reset_n_cells = 1;
 	reset->dev = &pdev->dev;
 	spin_lock_init(&reset->lock);
 

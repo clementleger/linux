@@ -656,7 +656,7 @@ static int bcm2835_power_probe(struct platform_device *pdev)
 	power->reset.owner = THIS_MODULE;
 	power->reset.nr_resets = BCM2835_RESET_COUNT;
 	power->reset.ops = &bcm2835_reset_ops;
-	power->reset.of_node = dev->parent->of_node;
+	power->reset.fwnode = dev_fwnode(dev->parent);
 
 	ret = devm_reset_controller_register(dev, &power->reset);
 	if (ret)
