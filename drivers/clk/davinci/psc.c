@@ -326,13 +326,15 @@ static const struct reset_control_ops davinci_psc_reset_ops = {
 	.deassert	= davinci_psc_reset_deassert,
 };
 
-static int davinci_psc_reset_of_xlate(struct reset_controller_dev *rcdev,
-				      const struct of_phandle_args *reset_spec)
+static int davinci_psc_reset_xlate(struct reset_controller_dev *rcdev,
+				   const struct fwnode_reference_args *reset_spec)
 {
-	struct of_phandle_args clkspec = *reset_spec; /* discard const qualifier */
+	struct of_phandle_args clkspec; /* discard const qualifier */
 	struct clk *clk;
 	struct clk_hw *hw;
 	struct davinci_lpsc_clk *lpsc;
+
+	of_phandle_args_from_fwnode_reference_args(&clkspec, reset_spec);
 
 	/* the clock node is the same as the reset node */
 	clk = of_clk_get_from_provider(&clkspec);
@@ -429,9 +431,9 @@ __davinci_psc_register_clocks(struct device *dev,
 	psc->rcdev.ops = &davinci_psc_reset_ops;
 	psc->rcdev.owner = THIS_MODULE;
 	psc->rcdev.dev = dev;
-	psc->rcdev.of_node = dev->of_node;
-	psc->rcdev.of_reset_n_cells = 1;
-	psc->rcdev.of_xlate = davinci_psc_reset_of_xlate;
+	psc->rcdev.fwnode = dev_fwnode(dev);
+	psc->rcdev.fwnode_reset_n_cells = 1;
+	psc->rcdev.fwnode_xlate = davinci_psc_reset_xlate;
 	psc->rcdev.nr_resets = num_clks;
 
 	ret = devm_reset_controller_register(dev, &psc->rcdev);

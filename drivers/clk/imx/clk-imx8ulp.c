@@ -123,7 +123,6 @@ static const struct reset_control_ops imx8ulp_pcc_reset_ops = {
 static int imx8ulp_pcc_reset_init(struct platform_device *pdev, void __iomem *base,
 	 const u32 *resets, unsigned int nr_resets)
 {
-	struct device_node *np = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
 	struct pcc_reset_dev *pcc_reset;
 
@@ -137,7 +136,7 @@ static int imx8ulp_pcc_reset_init(struct platform_device *pdev, void __iomem *ba
 	pcc_reset->rcdev.owner = THIS_MODULE;
 	pcc_reset->rcdev.nr_resets = nr_resets;
 	pcc_reset->rcdev.ops = &imx8ulp_pcc_reset_ops;
-	pcc_reset->rcdev.of_node = np;
+	pcc_reset->rcdev.fwnode = dev_fwnode(&pdev->dev);
 
 	return devm_reset_controller_register(dev, &pcc_reset->rcdev);
 }

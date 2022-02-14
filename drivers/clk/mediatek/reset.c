@@ -114,7 +114,7 @@ static void mtk_register_reset_controller_common(struct device_node *np,
 	data->rcdev.owner = THIS_MODULE;
 	data->rcdev.nr_resets = num_regs * 32;
 	data->rcdev.ops = reset_ops;
-	data->rcdev.of_node = np;
+	data->rcdev.fwnode = of_fwnode_handle(np);
 
 	ret = reset_controller_register(&data->rcdev);
 	if (ret) {

@@ -609,7 +609,7 @@ static int s500_clk_probe(struct platform_device *pdev)
 	if (!reset)
 		return -ENOMEM;
 
-	reset->rcdev.of_node = pdev->dev.of_node;
+	reset->rcdev.fwnode = dev_fwnode(&pdev->dev);
 	reset->rcdev.ops = &owl_reset_ops;
 	reset->rcdev.nr_resets = desc->num_resets;
 	reset->reset_map = desc->resets;

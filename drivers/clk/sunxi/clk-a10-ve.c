@@ -68,10 +68,10 @@ static int sunxi_ve_reset_deassert(struct reset_controller_dev *rcdev,
 	return 0;
 }
 
-static int sunxi_ve_of_xlate(struct reset_controller_dev *rcdev,
-			     const struct of_phandle_args *reset_spec)
+static int sunxi_ve_xlate(struct reset_controller_dev *rcdev,
+			  const struct fwnode_reference_args *reset_spec)
 {
-	if (WARN_ON(reset_spec->args_count != 0))
+	if (WARN_ON(reset_spec->nargs != 0))
 		return -EINVAL;
 
 	return 0;
@@ -137,9 +137,9 @@ static void __init sun4i_ve_clk_setup(struct device_node *node)
 	reset_data->lock = &ve_lock;
 	reset_data->rcdev.nr_resets = 1;
 	reset_data->rcdev.ops = &sunxi_ve_reset_ops;
-	reset_data->rcdev.of_node = node;
-	reset_data->rcdev.of_xlate = sunxi_ve_of_xlate;
-	reset_data->rcdev.of_reset_n_cells = 0;
+	reset_data->rcdev.fwnode = of_fwnode_handle(node);
+	reset_data->rcdev.fwnode_xlate = sunxi_ve_xlate;
+	reset_data->rcdev.fwnode_reset_n_cells = 0;
 	err = reset_controller_register(&reset_data->rcdev);
 	if (err)
 		goto err_free_reset;
