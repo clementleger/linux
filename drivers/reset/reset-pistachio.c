@@ -116,7 +116,7 @@ static int pistachio_reset_probe(struct platform_device *pdev)
 	rd->rcdev.owner = THIS_MODULE;
 	rd->rcdev.nr_resets = PISTACHIO_RESET_MAX + 1;
 	rd->rcdev.ops = &pistachio_reset_ops;
-	rd->rcdev.of_node = np;
+	rd->rcdev.fwnode = dev_fwnode(&pdev->dev);
 
 	return devm_reset_controller_register(dev, &rd->rcdev);
 }

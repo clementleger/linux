@@ -179,7 +179,7 @@ static int reset_simple_probe(struct platform_device *pdev)
 	data->rcdev.owner = THIS_MODULE;
 	data->rcdev.nr_resets = resource_size(res) * BITS_PER_BYTE;
 	data->rcdev.ops = &reset_simple_ops;
-	data->rcdev.of_node = dev->of_node;
+	data->rcdev.fwnode = dev_fwnode(dev);
 
 	if (devdata) {
 		reg_offset = devdata->reg_offset;

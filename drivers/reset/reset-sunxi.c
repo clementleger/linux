@@ -52,7 +52,7 @@ static int sunxi_reset_init(struct device_node *np)
 	data->rcdev.owner = THIS_MODULE;
 	data->rcdev.nr_resets = size * 8;
 	data->rcdev.ops = &reset_simple_ops;
-	data->rcdev.of_node = np;
+	data->rcdev.fwnode = of_fwnode_handle(np);
 	data->active_low = true;
 
 	return reset_controller_register(&data->rcdev);

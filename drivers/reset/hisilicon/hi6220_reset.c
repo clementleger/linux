@@ -173,7 +173,7 @@ static int hi6220_reset_probe(struct platform_device *pdev)
 	}
 
 	data->regmap = regmap;
-	data->rc_dev.of_node = np;
+	data->rc_dev.fwnode = dev_fwnode(dev);
 	if (type == MEDIA) {
 		data->rc_dev.ops = &hi6220_media_reset_ops;
 		data->rc_dev.nr_resets = MEDIA_MAX_INDEX;

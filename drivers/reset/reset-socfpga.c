@@ -56,7 +56,7 @@ static int a10_reset_init(struct device_node *np)
 	data->rcdev.owner = THIS_MODULE;
 	data->rcdev.nr_resets = SOCFPGA_NR_BANKS * 32;
 	data->rcdev.ops = &reset_simple_ops;
-	data->rcdev.of_node = np;
+	data->rcdev.fwnode = of_fwnode_handle(np);
 	data->status_active_low = true;
 
 	ret = reset_controller_register(&data->rcdev);

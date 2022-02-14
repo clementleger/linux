@@ -124,9 +124,9 @@ static int rzg2l_usbphy_ctrl_probe(struct platform_device *pdev)
 	reset_control_deassert(priv->rstc);
 
 	priv->rcdev.ops = &rzg2l_usbphy_ctrl_reset_ops;
-	priv->rcdev.of_reset_n_cells = 1;
+	priv->rcdev.fwnode_reset_n_cells = 1;
 	priv->rcdev.nr_resets = NUM_PORTS;
-	priv->rcdev.of_node = dev->of_node;
+	priv->rcdev.fwnode = dev_fwnode(dev);
 	priv->rcdev.dev = dev;
 
 	error = devm_reset_controller_register(dev, &priv->rcdev);

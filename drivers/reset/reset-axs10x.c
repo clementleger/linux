@@ -59,7 +59,7 @@ static int axs10x_reset_probe(struct platform_device *pdev)
 
 	rst->rcdev.owner = THIS_MODULE;
 	rst->rcdev.ops = &axs10x_reset_ops;
-	rst->rcdev.of_node = pdev->dev.of_node;
+	rst->rcdev.fwnode = dev_fwnode(&pdev->dev);
 	rst->rcdev.nr_resets = AXS10X_MAX_RESETS;
 
 	return devm_reset_controller_register(&pdev->dev, &rst->rcdev);

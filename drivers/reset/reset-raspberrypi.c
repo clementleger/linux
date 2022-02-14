@@ -97,7 +97,7 @@ static int rpi_reset_probe(struct platform_device *pdev)
 	priv->rcdev.owner = THIS_MODULE;
 	priv->rcdev.nr_resets = RASPBERRYPI_FIRMWARE_RESET_NUM_IDS;
 	priv->rcdev.ops = &rpi_reset_ops;
-	priv->rcdev.of_node = dev->of_node;
+	priv->rcdev.fwnode = dev_fwnode(dev);
 
 	return devm_reset_controller_register(dev, &priv->rcdev);
 }

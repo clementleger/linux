@@ -118,7 +118,7 @@ static int npcm_rc_status(struct reset_controller_dev *rcdev,
 }
 
 static int npcm_reset_xlate(struct reset_controller_dev *rcdev,
-			    const struct of_phandle_args *reset_spec)
+			    const struct fwnode_reference_args *reset_spec)
 {
 	unsigned int offset, bit;
 
@@ -251,9 +251,9 @@ static int npcm_rc_probe(struct platform_device *pdev)
 
 	rc->rcdev.owner = THIS_MODULE;
 	rc->rcdev.ops = &npcm_rc_ops;
-	rc->rcdev.of_node = pdev->dev.of_node;
-	rc->rcdev.of_reset_n_cells = 2;
-	rc->rcdev.of_xlate = npcm_reset_xlate;
+	rc->rcdev.fwnode = dev_fwnode(&pdev->dev);
+	rc->rcdev.fwnode_reset_n_cells = 2;
+	rc->rcdev.fwnode_xlate = npcm_reset_xlate;
 
 	platform_set_drvdata(pdev, rc);
 

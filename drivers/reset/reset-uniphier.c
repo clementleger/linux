@@ -372,7 +372,7 @@ static int uniphier_reset_probe(struct platform_device *pdev)
 
 	priv->rcdev.ops = &uniphier_reset_ops;
 	priv->rcdev.owner = dev->driver->owner;
-	priv->rcdev.of_node = dev->of_node;
+	priv->rcdev.fwnode = dev_fwnode(dev);
 	priv->rcdev.nr_resets = nr_resets;
 	priv->dev = dev;
 	priv->regmap = regmap;

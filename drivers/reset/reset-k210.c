@@ -71,7 +71,7 @@ static int k210_rst_status(struct reset_controller_dev *rcdev,
 }
 
 static int k210_rst_xlate(struct reset_controller_dev *rcdev,
-			  const struct of_phandle_args *reset_spec)
+			  const struct fwnode_reference_args *reset_spec)
 {
 	unsigned long id = reset_spec->args[0];
 
@@ -107,11 +107,11 @@ static int k210_rst_probe(struct platform_device *pdev)
 
 	ksr->rcdev.owner = THIS_MODULE;
 	ksr->rcdev.dev = dev;
-	ksr->rcdev.of_node = dev->of_node;
+	ksr->rcdev.fwnode = dev_fwnode(dev);
 	ksr->rcdev.ops = &k210_rst_ops;
 	ksr->rcdev.nr_resets = fls(K210_RST_MASK);
-	ksr->rcdev.of_reset_n_cells = 1;
-	ksr->rcdev.of_xlate = k210_rst_xlate;
+	ksr->rcdev.fwnode_reset_n_cells = 1;
+	ksr->rcdev.fwnode_xlate = k210_rst_xlate;
 
 	return devm_reset_controller_register(dev, &ksr->rcdev);
 }

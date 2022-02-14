@@ -112,9 +112,9 @@ static int hsdk_reset_probe(struct platform_device *pdev)
 
 	rst->rcdev.owner = THIS_MODULE;
 	rst->rcdev.ops = &hsdk_reset_ops;
-	rst->rcdev.of_node = pdev->dev.of_node;
+	rst->rcdev.fwnode = dev_fwnode(&pdev->dev);
 	rst->rcdev.nr_resets = HSDK_MAX_RESETS;
-	rst->rcdev.of_reset_n_cells = 1;
+	rst->rcdev.fwnode_reset_n_cells = 1;
 
 	return reset_controller_register(&rst->rcdev);
 }

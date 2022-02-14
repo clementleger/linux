@@ -188,7 +188,7 @@ static int lpc18xx_rgu_probe(struct platform_device *pdev)
 	rc->rcdev.owner = THIS_MODULE;
 	rc->rcdev.nr_resets = 64;
 	rc->rcdev.ops = &lpc18xx_rgu_ops;
-	rc->rcdev.of_node = pdev->dev.of_node;
+	rc->rcdev.fwnode = dev_fwnode(&pdev->dev);
 
 	platform_set_drvdata(pdev, rc);
 
