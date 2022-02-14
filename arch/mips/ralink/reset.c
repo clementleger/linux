@@ -69,17 +69,19 @@ static struct reset_controller_dev reset_dev = {
 	.ops			= &reset_ops,
 	.owner			= THIS_MODULE,
 	.nr_resets		= 32,
-	.of_reset_n_cells	= 1,
+	.fwnode_reset_n_cells	= 1,
 };
 
 void ralink_rst_init(void)
 {
-	reset_dev.of_node = of_find_compatible_node(NULL, NULL,
+	struct device_node *node = of_find_compatible_node(NULL, NULL,
 						"ralink,rt2880-reset");
-	if (!reset_dev.of_node)
+	if (!node) {
 		pr_err("Failed to find reset controller node");
-	else
+	} else {
+		reset_dev.fwnode = of_fwnode_handle(node);
 		reset_controller_register(&reset_dev);
+	}
 }
 
 static void ralink_restart(char *command)
