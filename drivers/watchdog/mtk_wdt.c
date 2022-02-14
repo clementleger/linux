@@ -152,7 +152,7 @@ static int toprgu_register_reset_controller(struct platform_device *pdev,
 	mtk_wdt->rcdev.owner = THIS_MODULE;
 	mtk_wdt->rcdev.nr_resets = rst_num;
 	mtk_wdt->rcdev.ops = &toprgu_reset_ops;
-	mtk_wdt->rcdev.of_node = pdev->dev.of_node;
+	mtk_wdt->rcdev.fwnode = dev_fwnode(&pdev->dev);
 	ret = devm_reset_controller_register(&pdev->dev, &mtk_wdt->rcdev);
 	if (ret != 0)
 		dev_err(&pdev->dev,
