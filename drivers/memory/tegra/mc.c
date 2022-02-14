@@ -301,8 +301,8 @@ static int tegra_mc_reset_setup(struct tegra_mc *mc)
 
 	mc->reset.ops = &tegra_mc_reset_ops;
 	mc->reset.owner = THIS_MODULE;
-	mc->reset.of_node = mc->dev->of_node;
-	mc->reset.of_reset_n_cells = 1;
+	mc->reset.fwnode = dev_fwnode(mc->dev);
+	mc->reset.fwnode_reset_n_cells = 1;
 	mc->reset.nr_resets = mc->soc->num_resets;
 
 	err = reset_controller_register(&mc->reset);
