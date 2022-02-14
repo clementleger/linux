@@ -105,7 +105,7 @@ static void __init pmu_reset_init(struct pmu_data *pmu)
 	int ret;
 
 	pmu->reset = pmu_reset;
-	pmu->reset.of_node = pmu->of_node;
+	pmu->reset.fwnode = of_fwnode_handle(pmu->of_node);
 
 	ret = reset_controller_register(&pmu->reset);
 	if (ret)
