@@ -403,7 +403,7 @@ static int aspeed_clk_probe(struct platform_device *pdev)
 	ar->rcdev.owner = THIS_MODULE;
 	ar->rcdev.nr_resets = ARRAY_SIZE(aspeed_resets);
 	ar->rcdev.ops = &aspeed_reset_ops;
-	ar->rcdev.of_node = dev->of_node;
+	ar->rcdev.fwnode = dev_fwnode(dev);
 
 	ret = devm_reset_controller_register(dev, &ar->rcdev);
 	if (ret) {

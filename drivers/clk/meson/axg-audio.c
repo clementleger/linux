@@ -1853,7 +1853,7 @@ static int axg_audio_clkc_probe(struct platform_device *pdev)
 	rst->offset = data->reset_offset;
 	rst->rstc.nr_resets = data->reset_num;
 	rst->rstc.ops = &axg_audio_rstc_ops;
-	rst->rstc.of_node = dev->of_node;
+	rst->rstc.fwnode = dev_fwnode(dev);
 	rst->rstc.owner = THIS_MODULE;
 
 	return devm_reset_controller_register(dev, &rst->rstc);

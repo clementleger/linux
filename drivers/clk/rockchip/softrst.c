@@ -99,7 +99,7 @@ void rockchip_register_softrst(struct device_node *np,
 	softrst->rcdev.owner = THIS_MODULE;
 	softrst->rcdev.nr_resets =  num_regs * softrst->num_per_reg;
 	softrst->rcdev.ops = &rockchip_softrst_ops;
-	softrst->rcdev.of_node = np;
+	softrst->rcdev.fwnode = of_fwnode_handle(np);
 	ret = reset_controller_register(&softrst->rcdev);
 	if (ret) {
 		pr_err("%s: could not register reset controller, %d\n",

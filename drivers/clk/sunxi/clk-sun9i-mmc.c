@@ -164,7 +164,7 @@ static int sun9i_a80_mmc_config_clk_probe(struct platform_device *pdev)
 	data->rcdev.owner = THIS_MODULE;
 	data->rcdev.nr_resets = count;
 	data->rcdev.ops = &sun9i_mmc_reset_ops;
-	data->rcdev.of_node = pdev->dev.of_node;
+	data->rcdev.fwnode = dev_fwnode(&pdev->dev);
 
 	ret = reset_controller_register(&data->rcdev);
 	if (ret)

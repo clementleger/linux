@@ -9,14 +9,14 @@
 
 #define rcdev_to_unit(rcdev) container_of(rcdev, struct mmp_clk_reset_unit, rcdev)
 
-static int mmp_of_reset_xlate(struct reset_controller_dev *rcdev,
-			  const struct of_phandle_args *reset_spec)
+static int mmp_reset_xlate(struct reset_controller_dev *rcdev,
+			   const struct fwnode_reference_args *reset_spec)
 {
 	struct mmp_clk_reset_unit *unit = rcdev_to_unit(rcdev);
 	struct mmp_clk_reset_cell *cell;
 	int i;
 
-	if (WARN_ON(reset_spec->args_count != rcdev->of_reset_n_cells))
+	if (WARN_ON(reset_spec->nargs != rcdev->fwnode_reset_n_cells))
 		return -EINVAL;
 
 	for (i = 0; i < rcdev->nr_resets; i++) {
@@ -90,11 +90,11 @@ void mmp_clk_reset_register(struct device_node *np,
 		return;
 
 	unit->cells = cells;
-	unit->rcdev.of_reset_n_cells = 1;
+	unit->rcdev.fwnode_reset_n_cells = 1;
 	unit->rcdev.nr_resets = nr_resets;
 	unit->rcdev.ops = &mmp_clk_reset_ops;
-	unit->rcdev.of_node = np;
-	unit->rcdev.of_xlate = mmp_of_reset_xlate;
+	unit->rcdev.fwnode = of_fwnode_handle(np);
+	unit->rcdev.fwnode_xlate = mmp_reset_xlate;
 
 	reset_controller_register(&unit->rcdev);
 }

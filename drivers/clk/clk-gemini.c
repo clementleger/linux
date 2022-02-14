@@ -301,7 +301,7 @@ static int gemini_clk_probe(struct platform_device *pdev)
 	gr->rcdev.owner = THIS_MODULE;
 	gr->rcdev.nr_resets = 32;
 	gr->rcdev.ops = &gemini_reset_ops;
-	gr->rcdev.of_node = np;
+	gr->rcdev.fwnode = of_fwnode_handle(np);
 
 	ret = devm_reset_controller_register(dev, &gr->rcdev);
 	if (ret) {

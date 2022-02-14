@@ -134,11 +134,11 @@ static const struct reset_control_ops u8500_prcc_reset_ops = {
 };
 
 static int u8500_prcc_reset_xlate(struct reset_controller_dev *rcdev,
-				  const struct of_phandle_args *reset_spec)
+				  const struct fwnode_reference_args *reset_spec)
 {
 	unsigned int prcc_num, bit;
 
-	if (reset_spec->args_count != 2)
+	if (reset_spec->nargs != 2)
 		return -EINVAL;
 
 	prcc_num = reset_spec->args[0];
@@ -171,9 +171,9 @@ void u8500_prcc_reset_init(struct device_node *np, struct u8500_prcc_reset *ur)
 
 	rcdev->owner = THIS_MODULE;
 	rcdev->ops = &u8500_prcc_reset_ops;
-	rcdev->of_node = np;
-	rcdev->of_reset_n_cells = 2;
-	rcdev->of_xlate = u8500_prcc_reset_xlate;
+	rcdev->fwnode = of_fwnode_handle(np);
+	rcdev->fwnode_reset_n_cells = 2;
+	rcdev->fwnode_xlate = u8500_prcc_reset_xlate;
 
 	ret = reset_controller_register(rcdev);
 	if (ret)

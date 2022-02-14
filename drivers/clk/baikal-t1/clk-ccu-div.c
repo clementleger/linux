@@ -440,7 +440,7 @@ static int ccu_div_rst_register(struct ccu_div_data *data)
 	int ret;
 
 	data->rcdev.ops = &ccu_div_rst_ops;
-	data->rcdev.of_node = data->np;
+	data->rcdev.fwnode = of_fwnode_handle(data->np);
 	data->rcdev.nr_resets = data->rst_num;
 
 	ret = reset_controller_register(&data->rcdev);

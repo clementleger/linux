@@ -92,7 +92,7 @@ static const struct reset_control_ops sun4i_a10_display_reset_ops = {
 };
 
 static int sun4i_a10_display_reset_xlate(struct reset_controller_dev *rcdev,
-					 const struct of_phandle_args *spec)
+					 const struct fwnode_reference_args *spec)
 {
 	/* We only have a single reset signal */
 	return 0;
@@ -184,13 +184,13 @@ static void __init sun4i_a10_display_init(struct device_node *node,
 	reset_data->lock = &sun4i_a10_display_lock;
 	reset_data->rcdev.nr_resets = data->num_rst;
 	reset_data->rcdev.ops = &sun4i_a10_display_reset_ops;
-	reset_data->rcdev.of_node = node;
+	reset_data->rcdev.fwnode = of_fwnode_handle(node);
 
 	if (data->num_rst == 1) {
-		reset_data->rcdev.of_reset_n_cells = 0;
-		reset_data->rcdev.of_xlate = &sun4i_a10_display_reset_xlate;
+		reset_data->rcdev.fwnode_reset_n_cells = 0;
+		reset_data->rcdev.fwnode_xlate = &sun4i_a10_display_reset_xlate;
 	} else {
-		reset_data->rcdev.of_reset_n_cells = 1;
+		reset_data->rcdev.fwnode_reset_n_cells = 1;
 	}
 
 	if (reset_controller_register(&reset_data->rcdev)) {
