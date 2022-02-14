@@ -1012,7 +1012,7 @@ static int ufs_qcom_init(struct ufs_hba *hba)
 	}
 
 	/* Fire up the reset controller. Failure here is non-fatal. */
-	host->rcdev.of_node = dev->of_node;
+	host->rcdev.fwnode = dev_fwnode(dev);
 	host->rcdev.ops = &ufs_qcom_reset_ops;
 	host->rcdev.owner = dev->driver->owner;
 	host->rcdev.nr_resets = 1;
