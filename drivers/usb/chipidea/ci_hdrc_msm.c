@@ -214,7 +214,7 @@ static int ci_hdrc_msm_probe(struct platform_device *pdev)
 
 	ci->rcdev.owner = THIS_MODULE;
 	ci->rcdev.ops = &ci_hdrc_msm_reset_ops;
-	ci->rcdev.of_node = pdev->dev.of_node;
+	ci->rcdev.fwnode = dev_fwnode(&pdev->dev);
 	ci->rcdev.nr_resets = 2;
 	ret = devm_reset_controller_register(&pdev->dev, &ci->rcdev);
 	if (ret)
