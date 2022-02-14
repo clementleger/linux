@@ -25,6 +25,7 @@ struct pinconf_ops;
 struct pin_config_item;
 struct gpio_chip;
 struct device_node;
+struct fwnode_handle;
 
 /**
  * struct pinctrl_pin_desc - boards/machines provide information on their
