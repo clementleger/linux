@@ -101,7 +101,7 @@ static int brcmstb_reset_probe(struct platform_device *pdev)
 	priv->rcdev.nr_resets = DIV_ROUND_DOWN_ULL(resource_size(res),
 						   SW_INIT_BANK_SIZE) * 32;
 	priv->rcdev.ops = &brcmstb_reset_ops;
-	priv->rcdev.of_node = kdev->of_node;
+	priv->rcdev.fwnode = dev_fwnode(kdev);
 	/* Use defaults: 1 cell and simple xlate function */
 
 	return devm_reset_controller_register(kdev, &priv->rcdev);

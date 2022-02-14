@@ -114,7 +114,7 @@ static int zynq_reset_probe(struct platform_device *pdev)
 	priv->rcdev.owner = THIS_MODULE;
 	priv->rcdev.nr_resets = resource_size(res) / 4 * BITS_PER_LONG;
 	priv->rcdev.ops = &zynq_reset_ops;
-	priv->rcdev.of_node = pdev->dev.of_node;
+	priv->rcdev.fwnode = dev_fwnode(&pdev->dev);
 
 	return devm_reset_controller_register(&pdev->dev, &priv->rcdev);
 }

@@ -53,7 +53,7 @@ static int brcm_rescal_reset_set(struct reset_controller_dev *rcdev,
 }
 
 static int brcm_rescal_reset_xlate(struct reset_controller_dev *rcdev,
-				   const struct of_phandle_args *reset_spec)
+				   const struct fwnode_reference_args *reset_spec)
 {
 	/* This is needed if #reset-cells == 0. */
 	return 0;
@@ -80,8 +80,8 @@ static int brcm_rescal_reset_probe(struct platform_device *pdev)
 	data->rcdev.owner = THIS_MODULE;
 	data->rcdev.nr_resets = 1;
 	data->rcdev.ops = &brcm_rescal_reset_ops;
-	data->rcdev.of_node = pdev->dev.of_node;
-	data->rcdev.of_xlate = brcm_rescal_reset_xlate;
+	data->rcdev.fwnode = dev_fwnode(&pdev->dev);
+	data->rcdev.fwnode_xlate = brcm_rescal_reset_xlate;
 	data->dev = &pdev->dev;
 
 	return devm_reset_controller_register(&pdev->dev, &data->rcdev);

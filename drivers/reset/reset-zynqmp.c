@@ -72,8 +72,8 @@ static int zynqmp_reset_reset(struct reset_controller_dev *rcdev,
 				      PM_RESET_ACTION_PULSE);
 }
 
-static int zynqmp_reset_of_xlate(struct reset_controller_dev *rcdev,
-				 const struct of_phandle_args *reset_spec)
+static int zynqmp_reset_xlate(struct reset_controller_dev *rcdev,
+				 const struct fwnode_reference_args *reset_spec)
 {
 	return reset_spec->args[0];
 }
@@ -111,10 +111,10 @@ static int zynqmp_reset_probe(struct platform_device *pdev)
 
 	priv->rcdev.ops = &zynqmp_reset_ops;
 	priv->rcdev.owner = THIS_MODULE;
-	priv->rcdev.of_node = pdev->dev.of_node;
+	priv->rcdev.fwnode = dev_fwnode(&pdev->dev);
 	priv->rcdev.nr_resets = priv->data->num_resets;
-	priv->rcdev.of_reset_n_cells = 1;
-	priv->rcdev.of_xlate = zynqmp_reset_of_xlate;
+	priv->rcdev.fwnode_reset_n_cells = 1;
+	priv->rcdev.fwnode_xlate = zynqmp_reset_xlate;
 
 	return devm_reset_controller_register(&pdev->dev, &priv->rcdev);
 }

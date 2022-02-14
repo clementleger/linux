@@ -63,7 +63,7 @@ static const struct reset_control_ops hi3660_reset_ops = {
 };
 
 static int hi3660_reset_xlate(struct reset_controller_dev *rcdev,
-			      const struct of_phandle_args *reset_spec)
+			      const struct fwnode_reference_args *reset_spec)
 {
 	unsigned int offset, bit;
 
@@ -95,9 +95,9 @@ static int hi3660_reset_probe(struct platform_device *pdev)
 	}
 
 	rc->rst.ops = &hi3660_reset_ops,
-	rc->rst.of_node = np;
-	rc->rst.of_reset_n_cells = 2;
-	rc->rst.of_xlate = hi3660_reset_xlate;
+	rc->rst.fwnode = dev_fwnode(&pdev->dev);
+	rc->rst.fwnode_reset_n_cells = 2;
+	rc->rst.fwnode_xlate = hi3660_reset_xlate;
 
 	return reset_controller_register(&rc->rst);
 }

@@ -101,7 +101,6 @@ static int mchp_sparx5_map_io(struct platform_device *pdev, int index,
 
 static int mchp_sparx5_reset_probe(struct platform_device *pdev)
 {
-	struct device_node *dn = pdev->dev.of_node;
 	struct mchp_reset_context *ctx;
 	int err;
 
@@ -119,7 +118,6 @@ static int mchp_sparx5_reset_probe(struct platform_device *pdev)
 	ctx->rcdev.owner = THIS_MODULE;
 	ctx->rcdev.nr_resets = 1;
 	ctx->rcdev.ops = &sparx5_reset_ops;
-	ctx->rcdev.of_node = dn;
 	ctx->rcdev.fwnode = dev_fwnode(&pdev->dev);
 	ctx->props = device_get_match_data(&pdev->dev);
 

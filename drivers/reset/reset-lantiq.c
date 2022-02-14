@@ -150,7 +150,7 @@ static int lantiq_rcu_reset_of_parse(struct platform_device *pdev,
 }
 
 static int lantiq_rcu_reset_xlate(struct reset_controller_dev *rcdev,
-				  const struct of_phandle_args *reset_spec)
+				  const struct fwnode_reference_args *reset_spec)
 {
 	unsigned int status, set;
 
@@ -181,10 +181,10 @@ static int lantiq_rcu_reset_probe(struct platform_device *pdev)
 
 	priv->rcdev.ops = &lantiq_rcu_reset_ops;
 	priv->rcdev.owner = THIS_MODULE;
-	priv->rcdev.of_node = pdev->dev.of_node;
+	priv->rcdev.fwnode = dev_fwnode(&pdev->dev);
 	priv->rcdev.nr_resets = 32;
-	priv->rcdev.of_xlate = lantiq_rcu_reset_xlate;
-	priv->rcdev.of_reset_n_cells = 2;
+	priv->rcdev.fwnode_xlate = lantiq_rcu_reset_xlate;
+	priv->rcdev.fwnode_reset_n_cells = 2;
 
 	return devm_reset_controller_register(&pdev->dev, &priv->rcdev);
 }

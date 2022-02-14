@@ -90,7 +90,6 @@ static int scmi_reset_probe(struct scmi_device *sdev)
 {
 	struct scmi_reset_data *data;
 	struct device *dev = &sdev->dev;
-	struct device_node *np = dev->of_node;
 	const struct scmi_handle *handle = sdev->handle;
 	struct scmi_protocol_handle *ph;
 
@@ -107,7 +106,7 @@ static int scmi_reset_probe(struct scmi_device *sdev)
 
 	data->rcdev.ops = &scmi_reset_ops;
 	data->rcdev.owner = THIS_MODULE;
-	data->rcdev.of_node = np;
+	data->rcdev.fwnode = dev_fwnode(dev);
 	data->rcdev.nr_resets = reset_ops->num_domains_get(ph);
 	data->ph = ph;
 

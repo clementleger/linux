@@ -133,7 +133,7 @@ static const struct reset_control_ops intel_reset_ops = {
 };
 
 static int intel_reset_xlate(struct reset_controller_dev *rcdev,
-			     const struct of_phandle_args *spec)
+			     const struct fwnode_reference_args *spec)
 {
 	struct intel_reset_data *data = to_reset_data(rcdev);
 	u32 id;
@@ -167,7 +167,6 @@ static int intel_reset_restart_handler(struct notifier_block *nb,
 
 static int intel_reset_probe(struct platform_device *pdev)
 {
-	struct device_node *np = pdev->dev.of_node;
 	struct device *dev = &pdev->dev;
 	struct intel_reset_data *data;
 	void __iomem *base;
@@ -201,11 +200,11 @@ static int intel_reset_probe(struct platform_device *pdev)
 	}
 
 	data->dev =			dev;
-	data->rcdev.of_node =		np;
+	data->rcdev.fwnode =		dev_fwnode(&pdev->dev);
 	data->rcdev.owner =		dev->driver->owner;
 	data->rcdev.ops	=		&intel_reset_ops;
-	data->rcdev.of_xlate =		intel_reset_xlate;
-	data->rcdev.of_reset_n_cells =	data->soc_data->reset_cell_count;
+	data->rcdev.fwnode_xlate =		intel_reset_xlate;
+	data->rcdev.fwnode_reset_n_cells =	data->soc_data->reset_cell_count;
 	ret = devm_reset_controller_register(&pdev->dev, &data->rcdev);
 	if (ret)
 		return ret;

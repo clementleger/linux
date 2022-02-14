@@ -111,8 +111,8 @@ static int bcm6345_reset_probe(struct platform_device *pdev)
 	spin_lock_init(&bcm6345_reset->lock);
 	bcm6345_reset->rcdev.ops = &bcm6345_reset_ops;
 	bcm6345_reset->rcdev.owner = THIS_MODULE;
-	bcm6345_reset->rcdev.of_node = pdev->dev.of_node;
-	bcm6345_reset->rcdev.of_reset_n_cells = 1;
+	bcm6345_reset->rcdev.fwnode = dev_fwnode(&pdev->dev);
+	bcm6345_reset->rcdev.fwnode_reset_n_cells = 1;
 	bcm6345_reset->rcdev.nr_resets = BCM6345_RESET_NUM;
 
 	return devm_reset_controller_register(&pdev->dev,

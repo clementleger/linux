@@ -46,7 +46,6 @@ static const struct reset_control_ops lan966x_phy_reset_ops = {
 
 static int lan966x_phy_reset_probe(struct platform_device *pdev)
 {
-	struct device_node *dn = pdev->dev.of_node;
 	struct lan966x_phy_reset_context *ctx;
 
 	ctx = devm_kzalloc(&pdev->dev, sizeof(*ctx), GFP_KERNEL);
@@ -68,7 +67,6 @@ static int lan966x_phy_reset_probe(struct platform_device *pdev)
 	ctx->rcdev.owner = THIS_MODULE;
 	ctx->rcdev.nr_resets = 1;
 	ctx->rcdev.ops = &lan966x_phy_reset_ops;
-	ctx->rcdev.of_node = dn;
 	ctx->rcdev.fwnode = dev_fwnode(&pdev->dev);
 
 	return devm_reset_controller_register(&pdev->dev, &ctx->rcdev);
