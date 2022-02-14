@@ -129,7 +129,7 @@ static int sunxi_ccu_probe(struct sunxi_ccu *ccu, struct device *dev,
 		goto err_clk_unreg;
 
 	reset = &ccu->reset;
-	reset->rcdev.of_node = node;
+	reset->rcdev.fwnode = of_fwnode_handle(node);
 	reset->rcdev.ops = &ccu_reset_ops;
 	reset->rcdev.owner = dev ? dev->driver->owner : THIS_MODULE;
 	reset->rcdev.nr_resets = desc->num_resets;

@@ -158,7 +158,7 @@ static void __init sunxi_usb_clk_setup(struct device_node *node,
 	reset_data->lock = lock;
 	reset_data->rcdev.nr_resets = __fls(data->reset_mask) + 1;
 	reset_data->rcdev.ops = &sunxi_usb_reset_ops;
-	reset_data->rcdev.of_node = node;
+	reset_data->rcdev.fwnode = of_fwnode_handle(node);
 	reset_controller_register(&reset_data->rcdev);
 }
 

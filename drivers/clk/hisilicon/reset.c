@@ -27,8 +27,8 @@ struct hisi_reset_controller {
 #define to_hisi_reset_controller(rcdev)  \
 	container_of(rcdev, struct hisi_reset_controller, rcdev)
 
-static int hisi_reset_of_xlate(struct reset_controller_dev *rcdev,
-			const struct of_phandle_args *reset_spec)
+static int hisi_reset_xlate(struct reset_controller_dev *rcdev,
+			    const struct fwnode_reference_args *reset_spec)
 {
 	u32 offset;
 	u8 bit;
@@ -102,9 +102,9 @@ struct hisi_reset_controller *hisi_reset_init(struct platform_device *pdev)
 	spin_lock_init(&rstc->lock);
 	rstc->rcdev.owner = THIS_MODULE;
 	rstc->rcdev.ops = &hisi_reset_ops;
-	rstc->rcdev.of_node = pdev->dev.of_node;
-	rstc->rcdev.of_reset_n_cells = 2;
-	rstc->rcdev.of_xlate = hisi_reset_of_xlate;
+	rstc->rcdev.fwnode = dev_fwnode(&pdev->dev);
+	rstc->rcdev.fwnode_reset_n_cells = 2;
+	rstc->rcdev.fwnode_xlate = hisi_reset_xlate;
 	reset_controller_register(&rstc->rcdev);
 
 	return rstc;

@@ -653,7 +653,7 @@ static const struct reset_control_ops cpg_mssr_reset_ops = {
 };
 
 static int cpg_mssr_reset_xlate(struct reset_controller_dev *rcdev,
-				const struct of_phandle_args *reset_spec)
+				const struct fwnode_reference_args *reset_spec)
 {
 	struct cpg_mssr_priv *priv = rcdev_to_priv(rcdev);
 	unsigned int unpacked = reset_spec->args[0];
@@ -670,9 +670,9 @@ static int cpg_mssr_reset_xlate(struct reset_controller_dev *rcdev,
 static int cpg_mssr_reset_controller_register(struct cpg_mssr_priv *priv)
 {
 	priv->rcdev.ops = &cpg_mssr_reset_ops;
-	priv->rcdev.of_node = priv->dev->of_node;
-	priv->rcdev.of_reset_n_cells = 1;
-	priv->rcdev.of_xlate = cpg_mssr_reset_xlate;
+	priv->rcdev.fwnode = dev_fwnode(priv->dev);
+	priv->rcdev.fwnode_reset_n_cells = 1;
+	priv->rcdev.fwnode_xlate = cpg_mssr_reset_xlate;
 	priv->rcdev.nr_resets = priv->num_mod_clks;
 	return devm_reset_controller_register(priv->dev, &priv->rcdev);
 }

@@ -3811,7 +3811,7 @@ static void __init meson8b_clkc_init_common(struct device_node *np,
 	rstc->regmap = map;
 	rstc->reset.ops = &meson8b_clk_reset_ops;
 	rstc->reset.nr_resets = ARRAY_SIZE(meson8b_clk_reset_bits);
-	rstc->reset.of_node = np;
+	rstc->reset.fwnode = of_fwnode_handle(np);
 	ret = reset_controller_register(&rstc->reset);
 	if (ret) {
 		pr_err("%s: Failed to register clkc reset controller: %d\n",

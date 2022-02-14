@@ -464,7 +464,7 @@ static int aspeed_g6_clk_probe(struct platform_device *pdev)
 	ar->rcdev.owner = THIS_MODULE;
 	ar->rcdev.nr_resets = 64;
 	ar->rcdev.ops = &aspeed_g6_reset_ops;
-	ar->rcdev.of_node = dev->of_node;
+	ar->rcdev.fwnode = dev_fwnode(dev);
 
 	ret = devm_reset_controller_register(dev, &ar->rcdev);
 	if (ret) {

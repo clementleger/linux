@@ -591,7 +591,7 @@ static int sifive_prci_probe(struct platform_device *pdev)
 	pd->reset.rcdev.owner = THIS_MODULE;
 	pd->reset.rcdev.nr_resets = PRCI_RST_NR;
 	pd->reset.rcdev.ops = &reset_simple_ops;
-	pd->reset.rcdev.of_node = pdev->dev.of_node;
+	pd->reset.rcdev.fwnode = dev_fwnode(&pdev->dev);
 	pd->reset.active_low = true;
 	pd->reset.membase = pd->va + PRCI_DEVICESRESETREG_OFFSET;
 	spin_lock_init(&pd->reset.lock);

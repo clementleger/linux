@@ -312,7 +312,7 @@ static const struct reset_control_ops rst_ops = {
 static struct reset_controller_dev rst_ctlr = {
 	.ops = &rst_ops,
 	.owner = THIS_MODULE,
-	.of_reset_n_cells = 1,
+	.fwnode_reset_n_cells = 1,
 };
 
 void __init tegra_add_of_provider(struct device_node *np,
@@ -334,7 +334,7 @@ void __init tegra_add_of_provider(struct device_node *np,
 	clk_data.clk_num = clk_num;
 	of_clk_add_provider(np, clk_src_onecell_get, &clk_data);
 
-	rst_ctlr.of_node = np;
+	rst_ctlr.fwnode = of_fwnode_handle(np);
 	rst_ctlr.nr_resets = periph_banks * 32 + num_special_reset;
 	reset_controller_register(&rst_ctlr);
 }

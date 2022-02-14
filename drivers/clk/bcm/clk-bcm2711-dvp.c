@@ -48,7 +48,7 @@ static int clk_dvp_probe(struct platform_device *pdev)
 	dvp->reset.rcdev.owner = THIS_MODULE;
 	dvp->reset.rcdev.nr_resets = NR_RESETS;
 	dvp->reset.rcdev.ops = &reset_simple_ops;
-	dvp->reset.rcdev.of_node = pdev->dev.of_node;
+	dvp->reset.rcdev.fwnode = dev_fwnode(&pdev->dev);
 	dvp->reset.membase = base + DVP_HT_RPI_SW_INIT;
 	spin_lock_init(&dvp->reset.lock);
 

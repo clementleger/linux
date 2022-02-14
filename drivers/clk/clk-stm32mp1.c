@@ -2263,7 +2263,7 @@ static int stm32_rcc_reset_init(struct device *dev, void __iomem *base,
 	reset_data->membase = base;
 	reset_data->rcdev.owner = THIS_MODULE;
 	reset_data->rcdev.ops = &stm32_reset_ops;
-	reset_data->rcdev.of_node = dev_of_node(dev);
+	reset_data->rcdev.fwnode = dev_fw_node(dev);
 	reset_data->rcdev.nr_resets = STM32_RESET_ID_MASK;
 	reset_data->clear_offset = data->clear_offset;
 
