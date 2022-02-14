@@ -206,7 +206,7 @@ static int ti_syscon_reset_probe(struct platform_device *pdev)
 
 	data->rcdev.ops = &ti_syscon_reset_ops;
 	data->rcdev.owner = THIS_MODULE;
-	data->rcdev.of_node = np;
+	data->rcdev.fwnode = dev_fwnode(np);
 	data->rcdev.nr_resets = nr_controls;
 	data->regmap = regmap;
 	data->controls = controls;

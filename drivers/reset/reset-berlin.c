@@ -53,7 +53,7 @@ static const struct reset_control_ops berlin_reset_ops = {
 };
 
 static int berlin_reset_xlate(struct reset_controller_dev *rcdev,
-			      const struct of_phandle_args *reset_spec)
+			      const struct fwnode_reference_args *reset_spec)
 {
 	unsigned int offset, bit;
 
@@ -82,9 +82,9 @@ static int berlin2_reset_probe(struct platform_device *pdev)
 
 	priv->rcdev.owner = THIS_MODULE;
 	priv->rcdev.ops = &berlin_reset_ops;
-	priv->rcdev.of_node = pdev->dev.of_node;
-	priv->rcdev.of_reset_n_cells = 2;
-	priv->rcdev.of_xlate = berlin_reset_xlate;
+	priv->rcdev.fwnode = dev_fwnode(&pdev->dev);
+	priv->rcdev.fwnode_reset_n_cells = 2;
+	priv->rcdev.fwnode_xlate = berlin_reset_xlate;
 
 	return reset_controller_register(&priv->rcdev);
 }

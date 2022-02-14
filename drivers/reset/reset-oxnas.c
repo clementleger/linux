@@ -99,7 +99,7 @@ static int oxnas_reset_probe(struct platform_device *pdev)
 	data->rcdev.owner = THIS_MODULE;
 	data->rcdev.nr_resets = 32;
 	data->rcdev.ops = &oxnas_reset_ops;
-	data->rcdev.of_node = pdev->dev.of_node;
+	data->rcdev.fwnode = dev_fwnode(&pdev->dev);
 
 	return devm_reset_controller_register(&pdev->dev, &data->rcdev);
 }

@@ -104,8 +104,8 @@ static int ath79_reset_probe(struct platform_device *pdev)
 	spin_lock_init(&ath79_reset->lock);
 	ath79_reset->rcdev.ops = &ath79_reset_ops;
 	ath79_reset->rcdev.owner = THIS_MODULE;
-	ath79_reset->rcdev.of_node = pdev->dev.of_node;
-	ath79_reset->rcdev.of_reset_n_cells = 1;
+	ath79_reset->rcdev.fwnode = dev_fwnode(&pdev->dev);
+	ath79_reset->rcdev.fwnode_reset_n_cells = 1;
 	ath79_reset->rcdev.nr_resets = 32;
 
 	err = devm_reset_controller_register(&pdev->dev, &ath79_reset->rcdev);

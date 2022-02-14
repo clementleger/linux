@@ -176,7 +176,7 @@ static const struct reset_control_ops ti_sci_reset_ops = {
 };
 
 /**
- * ti_sci_reset_of_xlate() - translate a set of OF arguments to a reset ID
+ * ti_sci_reset_xlate() - translate a set of OF arguments to a reset ID
  * @rcdev: reset controller entity
  * @reset_spec: OF reset argument specifier
  *
@@ -189,13 +189,13 @@ static const struct reset_control_ops ti_sci_reset_ops = {
  *
  * Return: 0 for successful request, else a corresponding error value
  */
-static int ti_sci_reset_of_xlate(struct reset_controller_dev *rcdev,
-				 const struct of_phandle_args *reset_spec)
+static int ti_sci_reset_xlate(struct reset_controller_dev *rcdev,
+			      const struct fwnode_reference_args *reset_spec)
 {
 	struct ti_sci_reset_data *data = to_ti_sci_reset_data(rcdev);
 	struct ti_sci_reset_control *control;
 
-	if (WARN_ON(reset_spec->args_count != rcdev->of_reset_n_cells))
+	if (WARN_ON(reset_spec->nargs != rcdev->fwnode_reset_n_cells))
 		return -EINVAL;
 
 	control = devm_kzalloc(data->dev, sizeof(*control), GFP_KERNEL);
@@ -232,9 +232,9 @@ static int ti_sci_reset_probe(struct platform_device *pdev)
 
 	data->rcdev.ops = &ti_sci_reset_ops;
 	data->rcdev.owner = THIS_MODULE;
-	data->rcdev.of_node = pdev->dev.of_node;
-	data->rcdev.of_reset_n_cells = 2;
-	data->rcdev.of_xlate = ti_sci_reset_of_xlate;
+	data->rcdev.fwnode = dev_fwnode(&pdev->dev);
+	data->rcdev.fwnode_reset_n_cells = 2;
+	data->rcdev.fwnode_xlate = ti_sci_reset_xlate;
 	data->dev = &pdev->dev;
 	idr_init(&data->idr);
 

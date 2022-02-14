@@ -379,7 +379,7 @@ static int imx7_reset_probe(struct platform_device *pdev)
 	imx7src->rcdev.owner     = THIS_MODULE;
 	imx7src->rcdev.nr_resets = variant->signals_num;
 	imx7src->rcdev.ops       = &variant->ops;
-	imx7src->rcdev.of_node   = dev->of_node;
+	imx7src->rcdev.fwnode    = dev_fwnode(dev);
 
 	return devm_reset_controller_register(dev, &imx7src->rcdev);
 }
