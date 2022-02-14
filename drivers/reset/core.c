@@ -67,9 +67,6 @@ static const char *rcdev_name(struct reset_controller_dev *rcdev)
 	if (rcdev->dev)
 		return dev_name(rcdev->dev);
 
-	if (rcdev->of_node)
-		return rcdev->of_node->full_name;
-
 	if (rcdev->fwnode)
 		return fwnode_get_name(rcdev->fwnode);
 
@@ -77,23 +74,15 @@ static const char *rcdev_name(struct reset_controller_dev *rcdev)
 }
 
 /**
- * of_reset_simple_xlate - translate reset_spec to the reset line number
+ * fwnode_reset_simple_xlate - translate reset_spec to the reset line number
  * @rcdev: a pointer to the reset controller device
- * @reset_spec: reset line specifier as found in the device tree
+ * @reset_spec: reset line specifier as found in the node
  *
- * This static translation function is used by default if of_xlate in
+ * This static translation function is used by default if _xlate in
  * :c:type:`reset_controller_dev` is not set. It is useful for all reset
  * controllers with 1:1 mapping, where reset lines can be indexed by number
  * without gaps.
  */
-static int of_reset_simple_xlate(struct reset_controller_dev *rcdev,
-				 const struct of_phandle_args *reset_spec)
-{
-	if (reset_spec->args[0] >= rcdev->nr_resets)
-		return -EINVAL;
-
-	return reset_spec->args[0];
-}
 
 static int fwnode_reset_simple_xlate(struct reset_controller_dev *rcdev,
 				     const struct fwnode_reference_args *rargs)
@@ -110,11 +99,6 @@ static int fwnode_reset_simple_xlate(struct reset_controller_dev *rcdev,
  */
 int reset_controller_register(struct reset_controller_dev *rcdev)
 {
-	if (!rcdev->of_xlate) {
-		rcdev->of_reset_n_cells = 1;
-		rcdev->of_xlate = of_reset_simple_xlate;
-	}
-
 	if (!rcdev->fwnode_xlate) {
 		rcdev->fwnode_reset_n_cells = 1;
 		rcdev->fwnode_xlate = fwnode_reset_simple_xlate;
@@ -894,64 +878,8 @@ struct reset_control *
 __of_reset_control_get(struct device_node *node, const char *id, int index,
 		       bool shared, bool optional, bool acquired)
 {
-	struct reset_control *rstc;
-	struct reset_controller_dev *r, *rcdev;
-	struct of_phandle_args args;
-	int rstc_id;
-	int ret;
-
-	if (!node)
-		return ERR_PTR(-EINVAL);
-
-	if (id) {
-		index = of_property_match_string(node,
-						 "reset-names", id);
-		if (index == -EILSEQ)
-			return ERR_PTR(index);
-		if (index < 0)
-			return optional ? NULL : ERR_PTR(-ENOENT);
-	}
-
-	ret = of_parse_phandle_with_args(node, "resets", "#reset-cells",
-					 index, &args);
-	if (ret == -EINVAL)
-		return ERR_PTR(ret);
-	if (ret)
-		return optional ? NULL : ERR_PTR(ret);
-
-	mutex_lock(&reset_list_mutex);
-	rcdev = NULL;
-	list_for_each_entry(r, &reset_controller_list, list) {
-		if (args.np == r->of_node) {
-			rcdev = r;
-			break;
-		}
-	}
-
-	if (!rcdev) {
-		rstc = ERR_PTR(-EPROBE_DEFER);
-		goto out;
-	}
-
-	if (WARN_ON(args.args_count != rcdev->of_reset_n_cells)) {
-		rstc = ERR_PTR(-EINVAL);
-		goto out;
-	}
-
-	rstc_id = rcdev->of_xlate(rcdev, &args);
-	if (rstc_id < 0) {
-		rstc = ERR_PTR(rstc_id);
-		goto out;
-	}
-
-	/* reset_list_mutex also protects the rcdev's reset_control list */
-	rstc = __reset_control_get_internal(rcdev, rstc_id, shared, acquired);
-
-out:
-	mutex_unlock(&reset_list_mutex);
-	of_node_put(args.np);
-
-	return rstc;
+	return __fwnode_reset_control_get(of_fwnode_handle(node), id, index,
+					  shared, optional, acquired);
 }
 EXPORT_SYMBOL_GPL(__of_reset_control_get);
 
@@ -1023,9 +951,6 @@ struct reset_control *__reset_control_get(struct device *dev, const char *id,
 	if (WARN_ON(shared && acquired))
 		return ERR_PTR(-EINVAL);
 
-	if (dev->of_node)
-		return __of_reset_control_get(dev->of_node, id, index, shared,
-					      optional, acquired);
 	if (dev_fwnode(dev))
 		return __fwnode_reset_control_get(dev_fwnode(dev), id, index,
 						  shared, optional, acquired);
@@ -1258,8 +1183,8 @@ of_reset_control_array_get(struct device_node *np, bool shared, bool optional,
 		return ERR_PTR(-ENOMEM);
 
 	for (i = 0; i < num; i++) {
-		rstc = __of_reset_control_get(np, NULL, i, shared, optional,
-					      acquired);
+		rstc = __fwnode_reset_control_get(of_fwnode_handle(np), NULL, i,
+						  shared, optional, acquired);
 		if (IS_ERR(rstc))
 			goto err_rst;
 		resets->rstc[i] = rstc;
