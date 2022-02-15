@@ -222,7 +222,7 @@ static int imx_src_probe(struct platform_device *pdev)
 
 	rcdev->ops = &imx_src_ops;
 	rcdev->dev = &pdev->dev;
-	rcdev->of_node = pdev->dev.of_node;
+	rcdev->fwnode = dev_fwnode(&pdev->dev);
 	rcdev->nr_resets = ARRAY_SIZE(sw_reset_bits);
 
 	return devm_reset_controller_register(&pdev->dev, rcdev);
