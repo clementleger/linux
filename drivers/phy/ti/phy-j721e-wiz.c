@@ -1249,7 +1249,7 @@ static int wiz_probe(struct platform_device *pdev)
 	phy_reset_dev->dev = dev;
 	phy_reset_dev->ops = &wiz_phy_reset_ops,
 	phy_reset_dev->owner = THIS_MODULE,
-	phy_reset_dev->of_node = node;
+	phy_reset_dev->fwnode = dev_fwnode(dev);
 	/* Reset for each of the lane and one for the entire SERDES */
 	phy_reset_dev->nr_resets = num_lanes + 1;
 
