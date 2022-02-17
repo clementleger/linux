@@ -22,7 +22,7 @@ fwnode_find_mii_timestamper(struct fwnode_handle *fwnode)
 	struct of_phandle_args arg;
 	int err;
 
-	if (is_acpi_node(fwnode))
+	if (!is_of_node(fwnode))
 		return NULL;
 
 	err = of_parse_phandle_with_fixed_args(to_of_node(fwnode),
