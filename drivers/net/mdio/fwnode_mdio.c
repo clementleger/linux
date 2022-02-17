@@ -126,7 +126,7 @@ int fwnode_mdiobus_register_phy(struct mii_bus *bus,
 			fwnode_handle_put(phy->mdio.dev.fwnode);
 			return rc;
 		}
-	} else if (is_of_node(child)) {
+	} else {
 		rc = fwnode_mdiobus_phy_device_register(bus, phy, child, addr);
 		if (rc) {
 			unregister_mii_timestamper(mii_ts);
