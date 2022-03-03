@@ -1,0 +1,306 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Device Tree Source for the Renesas RZ/N1D EP2 board
+ *
+ * Copyright (C) 2018 Renesas Electronics Europe Limited
+ * Copyright (C) 2021 Schneider Electric
+ *
+ */
+
+/dts-v1/;
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/rzn1-pinctrl.h>
+#include <dt-bindings/net/pcs-rzn1-miic.h>
+#include "r9a06g032.dtsi"
+
+/ {
+	model = "RZ/N1D EP2";
+	compatible = "renesas,rzn1d400-ep2", "renesas,r9a06g032", "renesas,rzn1";
+
+	chosen {
+		stdout-path = "serial0:115200n8";
+	};
+
+	aliases {
+		serial0 = &uart0;
+	};
+
+	leds {
+		compatible = "gpio-leds";
+		pinctrl-names = "default";
+		pinctrl-0 = <&leds_gpio>;
+
+		led_red {
+			label = "LED_RED";
+			/* LED_GPIO1 (GPIO0B[3]) */
+			gpios = <&gpio0b 3 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		led_green {
+			label = "LED_GREEN";
+			/* LED_GPIO2 (GPIO0A[25]) */
+			gpios = <&gpio0a 25 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+
+		led_blue {
+			label = "LED_BLUE";
+			/* LED_GPIO3 (GPIO0B[1]) */
+			gpios = <&gpio0b 1 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+
+		led_orange {
+			label = "LED_ORANGE";
+			/* LED_GPIO4 (GPIO2B[9]) */
+			gpios = <&gpio2b 9 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		led_line1 {
+			label = "LED_LINE1";
+			/* LED_GPIO5 (GPIO0B[2]) */
+			gpios = <&gpio0b 2 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		led_line2 {
+			label = "LED_LINE2";
+			/* LED_GPIO6 (GPIO1A[29]) */
+			gpios = <&gpio1a 29 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+
+		led_line3 {
+			label = "LED_LINE3";
+			/* LED_GPIO7 (GPIO2B[0]) */
+			gpios = <&gpio2b 0 GPIO_ACTIVE_HIGH>;
+			default-state = "off";
+		};
+	};
+};
+
+&uart0 {
+	pinctrl-0 = <&pins_uart0>;
+	pinctrl-names = "default";
+	status = "okay";
+};
+
+&nand_controller {
+	pinctrl-0 = <&pins_nand>;
+	pinctrl-names = "default";
+	status = "okay";
+
+	nand@0 {
+		reg = <0>;
+		nand-rb = <0>;
+		label = "chip0";
+
+		partitions {
+			compatible = "fixed-partitions";
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			partition@0 {
+				label = "full-chip";
+				reg = <0x0000000 0x20000000>;
+			};
+		};
+	};
+};
+
+&gpio0 {
+	status = "okay";
+};
+
+&gpio1 {
+	status = "okay";
+};
+
+&gpio2 {
+	status = "okay";
+};
+
+/* Compute gpio irq numbers: gpioXa Y = 32*X + Y */
+#define GPIOA_IRQ(gpioa_block, nr)	(32 * (gpioa_block) + (nr))
+
+&gpioirqmux {
+	status = "okay";
+	interrupt-map =
+		<GPIOA_IRQ(0, 11) &gic GIC_SPI 103 IRQ_TYPE_LEVEL_HIGH>, /* EPHY1_IRQ (GPIO0A[11]) */
+		<GPIOA_IRQ(0, 12) &gic GIC_SPI 104 IRQ_TYPE_LEVEL_HIGH>; /* EPHY2_IRQ (GPIO0A[12]) */
+};
+
+&gmac2 {
+	status = "okay";
+	phy-mode = "gmii";
+	/* Uses a fixed 1Gbps link between the 5-port switch and GMAC1. */
+	fixed-link {
+		speed = <1000>;
+		full-duplex;
+	};
+};
+
+&switch {
+	status = "okay";
+	#address-cells = <1>;
+	#size-cells = <0>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&pins_mdio1>, <&pins_eth3>, <&pins_eth4>;
+
+	dsa,member = <0 0>;
+
+	mdio {
+		reset-gpios = <&gpio0a 2 GPIO_ACTIVE_LOW>;
+		reset-delay-us = <15000>;
+		clock-frequency = <2500000>;
+
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		switch0phy1: ethernet-phy@1{
+			reg = <1>;
+			ti,reg-init = <0x17 0xff7f 0x0>,
+				      <0x19 0xffdf 0x0>,
+				      <0x462 0xfff8 0x1>,
+				      <0x469 0xfbff 0x0>;
+		};
+
+		switch0phy3: ethernet-phy@3{
+			reg = <3>;
+			ti,reg-init = <0x17 0xff7f 0x0>,
+				      <0x19 0xffdf 0x0>,
+				      <0x462 0xfff8 0x1>,
+				      <0x469 0xfbff 0x0>;
+		};
+	};
+};
+
+&switch_port0 {
+	label = "lan0";
+	phy-mode = "mii";
+	phy-handle = <&switch0phy3>;
+	status = "okay";
+};
+
+&switch_port1 {
+	label = "lan1";
+	phy-mode = "mii";
+	phy-handle = <&switch0phy1>;
+	status = "okay";
+};
+
+&switch_port4 {
+	status = "okay";
+};
+
+&eth_miic {
+	status = "okay";
+	renesas,miic-switch-portin = <MIIC_GMAC2_PORT>;
+};
+
+&mii_conv4 {
+	renesas,miic-input = <MIIC_SWITCH_PORTB>;
+	status = "okay";
+};
+
+&mii_conv5 {
+	renesas,miic-input = <MIIC_SWITCH_PORTA>;
+	status = "okay";
+};
+
+&pinctrl {
+	pins_eth3: pins_eth3 {
+		pinmux = <
+			RZN1_PINMUX(36, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH3_TXCLK */
+			RZN1_PINMUX(37, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH3_TXD[0] */
+			RZN1_PINMUX(38, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH3_TXD[1] */
+			RZN1_PINMUX(39, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH3_TXD[2] */
+			RZN1_PINMUX(40, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH3_TXD[3] */
+			RZN1_PINMUX(41, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH3_TXEN */
+			RZN1_PINMUX(42, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH3_RXCLK */
+			RZN1_PINMUX(43, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH3_RXD[0] */
+			RZN1_PINMUX(44, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH3_RXD[1] */
+			RZN1_PINMUX(45, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH3_RXD[2] */
+			RZN1_PINMUX(46, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH3_RXD[3] */
+			RZN1_PINMUX(47, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH3_RXDV */
+			RZN1_PINMUX(67, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH3_RXER */
+			RZN1_PINMUX(68, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH3_CRS */
+			RZN1_PINMUX(69, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH3_COL */
+		>;
+	};
+
+	pins_eth4: pins_eth4 {
+		pinmux = <
+			RZN1_PINMUX(48, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH4_TXCLK */
+			RZN1_PINMUX(49, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH4_TXD[0] */
+			RZN1_PINMUX(50, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH4_TXD[1] */
+			RZN1_PINMUX(51, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH4_TXD[2] */
+			RZN1_PINMUX(52, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH4_TXD[3] */
+			RZN1_PINMUX(53, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH4_TXEN */
+			RZN1_PINMUX(54, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH4_RXCLK */
+			RZN1_PINMUX(55, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH4_RXD[0] */
+			RZN1_PINMUX(56, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH4_RXD[1] */
+			RZN1_PINMUX(57, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH4_RXD[2] */
+			RZN1_PINMUX(58, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH4_RXD[3] */
+			RZN1_PINMUX(59, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH4_RXDV */
+			RZN1_PINMUX(71, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH4_RXER */
+			RZN1_PINMUX(72, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH4_CRS */
+			RZN1_PINMUX(73, RZN1_FUNC_CLK_ETH_MII_RGMII_RMII)	/* ETH4_COL */
+		>;
+	};
+
+	pins_mdio1: pins_mdio1 {
+		pinmux = <
+			RZN1_PINMUX(152, RZN1_FUNC_MDIO1_SWITCH) /* MDIO1_MDC */
+			RZN1_PINMUX(153, RZN1_FUNC_MDIO1_SWITCH) /* MDIO1_MDIO */
+			RZN1_PINMUX(60, RZN1_FUNC_CLK_ETH_NAND)	/* REFCLK_MII[0] */
+			RZN1_PINMUX(61, RZN1_FUNC_CLK_ETH_NAND)	/* REFCLK_MII[1] */
+			RZN1_PINMUX(4, RZN1_FUNC_GPIO)	/* EPHY_SOFT_RESET (GPIO0A[2]) */
+			RZN1_PINMUX(27, RZN1_FUNC_GPIO)	/* EPHY1_IRQ (GPIO0A[11]) */
+			RZN1_PINMUX(28, RZN1_FUNC_GPIO)	/* EPHY2_IRQ (GPIO0A[12]) */
+		>;
+	};
+
+	pins_nand: pins_nand {
+		pinmux = <
+		RZN1_PINMUX(80, RZN1_FUNC_CLK_ETH_NAND)	/* NAND_ALE */
+		RZN1_PINMUX(81, RZN1_FUNC_CLK_ETH_NAND)	/* NAND_CLE */
+		RZN1_PINMUX(82, RZN1_FUNC_CLK_ETH_NAND)	/* NAND_WE_N */
+		RZN1_PINMUX(83, RZN1_FUNC_CLK_ETH_NAND)	/* NAND_RE_N */
+		RZN1_PINMUX(84, RZN1_FUNC_CLK_ETH_NAND)	/* NAND_IO[0] */
+		RZN1_PINMUX(85, RZN1_FUNC_CLK_ETH_NAND)	/* NAND_IO[1] */
+		RZN1_PINMUX(86, RZN1_FUNC_CLK_ETH_NAND)	/* NAND_IO[2] */
+		RZN1_PINMUX(87, RZN1_FUNC_CLK_ETH_NAND)	/* NAND_IO[3] */
+		RZN1_PINMUX(88, RZN1_FUNC_CLK_ETH_NAND)	/* NAND_IO[4] */
+		RZN1_PINMUX(89, RZN1_FUNC_CLK_ETH_NAND)	/* NAND_IO[5] */
+		RZN1_PINMUX(90, RZN1_FUNC_CLK_ETH_NAND)	/* NAND_IO[6] */
+		RZN1_PINMUX(91, RZN1_FUNC_CLK_ETH_NAND)	/* NAND_IO[7] */
+		RZN1_PINMUX(92, RZN1_FUNC_CLK_ETH_NAND)	/* NAND_CE_N[0] */
+		RZN1_PINMUX(93, RZN1_FUNC_CLK_ETH_NAND)	/* NAND_WP_N[0] */
+		RZN1_PINMUX(94, RZN1_FUNC_CLK_ETH_NAND)	/* NAND_RYBY_N[0] */
+		>;
+	};
+
+	leds_gpio: leds_gpio {
+		pinmux = <
+		RZN1_PINMUX(2, RZN1_FUNC_GPIO)
+		RZN1_PINMUX(5, RZN1_FUNC_GPIO)
+		RZN1_PINMUX(6, RZN1_FUNC_GPIO)
+		RZN1_PINMUX(62, RZN1_FUNC_GPIO)
+		RZN1_PINMUX(119, RZN1_FUNC_GPIO)
+		RZN1_PINMUX(160, RZN1_FUNC_GPIO)
+		RZN1_PINMUX(169, RZN1_FUNC_GPIO)
+		>;
+	};
+
+	pins_uart0: pins_uart0 {
+		pinmux = <
+		RZN1_PINMUX(103, RZN1_FUNC_UART0_I)	/* UART0_TXD */
+		RZN1_PINMUX(104, RZN1_FUNC_UART0_I)	/* UART0_RXD */
+		>;
+	};
+};
