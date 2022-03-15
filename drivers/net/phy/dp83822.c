@@ -489,6 +489,44 @@ static int dp83822_phy_reset(struct phy_device *phydev)
 }
 
 #ifdef CONFIG_OF_MDIO
+
+static int dp83822_of_reg_init(struct phy_device *phydev)
+{
+	const __be32 *paddr;
+	int len, i, ret = 0;
+
+	if (!phydev->mdio.dev.of_node)
+		return 0;
+
+	paddr = of_get_property(phydev->mdio.dev.of_node,
+				"ti,reg-init", &len);
+	if (!paddr || len < (4 * sizeof(*paddr)))
+		return 0;
+
+	len /= sizeof(*paddr);
+	for (i = 0; i < len - 2; i += 3) {
+		u16 reg = be32_to_cpup(paddr + i + 0);
+		u16 mask = be32_to_cpup(paddr + i + 1);
+		u16 val_bits = be32_to_cpup(paddr + i + 2);
+		int val;
+
+		val = 0;
+		if (mask) {
+			val = phy_read_mmd(phydev, DP83822_DEVADDR, reg);
+			if (val < 0)
+				return val;
+			val &= mask;
+		}
+		val |= val_bits;
+
+		ret = phy_write_mmd(phydev, DP83822_DEVADDR, reg, val);
+		if (ret < 0)
+			return ret;
+	}
+
+	return 0;
+}
+
 static int dp83822_of_init(struct phy_device *phydev)
 {
 	struct dp83822_private *dp83822 = phydev->priv;
@@ -505,7 +543,7 @@ static int dp83822_of_init(struct phy_device *phydev)
 		dp83822->fx_enabled = device_property_present(dev,
 							      "ti,fiber-mode");
 
-	return 0;
+	return dp83822_of_reg_init(phydev);
 }
 #else
 static int dp83822_of_init(struct phy_device *phydev)
