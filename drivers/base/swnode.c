@@ -182,6 +182,34 @@ static int property_entry_read_int_array(const struct property_entry *props,
 	return 0;
 }
 
+static int property_entry_read_string_index(const struct property_entry *props,
+					    const char *propname, int index,
+					    const char **string)
+{
+	const char * const *strings;
+	size_t length;
+	int array_len;
+
+	/* Find out the array length. */
+	array_len = property_entry_count_elems_of_size(props, propname,
+						       sizeof(const char *));
+	if (array_len < 0)
+		return array_len;
+
+	if (index >= array_len)
+		return -EINVAL;
+
+	length = array_len * sizeof(const char *);
+
+	strings = property_entry_find(props, propname, length);
+	if (IS_ERR(strings))
+		return PTR_ERR(strings);
+
+	*string = strings[index];
+
+	return 0;
+}
+
 static int property_entry_read_string_array(const struct property_entry *props,
 					    const char *propname,
 					    const char **strings, size_t nval)
@@ -406,6 +434,17 @@ static int software_node_read_string_array(const struct fwnode_handle *fwnode,
 
 	return property_entry_read_string_array(swnode->node->properties,
 						propname, val, nval);
+}
+
+static int
+software_node_read_string_index(const struct fwnode_handle *fwnode,
+				const char *propname, int index,
+				const char **string)
+{
+	struct swnode *swnode = to_swnode(fwnode);
+
+	return property_entry_read_string_index(swnode->node->properties,
+						propname, index, string);
 }
 
 static const char *
@@ -666,6 +705,7 @@ static const struct fwnode_operations software_node_ops = {
 	.property_present = software_node_property_present,
 	.property_read_int_array = software_node_read_int_array,
 	.property_read_string_array = software_node_read_string_array,
+	.property_read_string_index = software_node_read_string_index,
 	.get_name = software_node_get_name,
 	.get_name_prefix = software_node_get_name_prefix,
 	.get_parent = software_node_get_parent,
