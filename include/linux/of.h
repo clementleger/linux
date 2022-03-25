@@ -1116,6 +1116,28 @@ static inline int of_property_read_string_array(const struct device_node *np,
 }
 
 /**
+ * of_property_read_string_array_index() - Read an array of strings from a
+ * multiple strings property starting at a specified index
+ * @np:		device node from which the property value is to be read.
+ * @propname:	name of the property to be searched.
+ * @out_strs:	output array of string pointers.
+ * @sz:		number of array elements to read.
+ * @index:	index to start reading from
+ *
+ * Search for a property in a device tree node and retrieve a list of
+ * terminated string values (pointer to data, not a copy) in that property
+ * starting at specified index.
+ *
+ * Return: If @out_strs is NULL, the number of strings in the property is returned.
+ */
+static inline int of_property_read_string_array_index(const struct device_node *np,
+						      const char *propname,
+						      const char **out_strs,
+						      size_t sz, int index)
+{
+	return of_property_read_string_helper(np, propname, out_strs, sz, index);
+}
+/**
  * of_property_count_strings() - Find and return the number of strings from a
  * multiple strings property.
  * @np:		device node from which the property value is to be read.
