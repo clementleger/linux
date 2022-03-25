@@ -407,6 +407,39 @@ int fwnode_property_read_string(const struct fwnode_handle *fwnode,
 EXPORT_SYMBOL_GPL(fwnode_property_read_string);
 
 /**
+ * fwnode_property_read_string_index - read a string in an array using an index
+ * @fwnode: Firmware node to get the property of
+ * @propname: Name of the property holding the array
+ * @index: Index of the string to look for
+ * @string: Pointer to the string if found
+ *
+ * Find a string by a given index in a string array and if it is found return
+ * the string value in @string.
+ *
+ * Return: %0 if the string was found (success),
+ *	   %-EINVAL if given arguments are not valid,
+ *	   %-ENODATA if the property does not have a value,
+ *	   %-EPROTO if the property is not an array of strings,
+ *	   %-ENXIO if no suitable firmware interface is present.
+ */
+int fwnode_property_read_string_index(const struct fwnode_handle *fwnode,
+				      const char *propname, int index,
+				      const char **string)
+{
+	int ret;
+
+	ret = fwnode_call_int_op(fwnode, property_read_string_array, propname,
+				 string, 1, index);
+	if (ret == -EINVAL && !IS_ERR_OR_NULL(fwnode) &&
+	    !IS_ERR_OR_NULL(fwnode->secondary))
+		ret = fwnode_call_int_op(fwnode->secondary,
+					 property_read_string_array, propname,
+					 string, 1, index);
+	return ret == 1 ? 0 : ret;
+}
+EXPORT_SYMBOL_GPL(fwnode_property_read_string_index);
+
+/**
  * fwnode_property_match_string - find a string in an array and return index
  * @fwnode: Firmware node to get the property of
  * @propname: Name of the property holding the array
