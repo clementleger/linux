@@ -759,6 +759,26 @@ static void __init of_unittest_property_string(void)
 	strings[1] = NULL;
 	rc = of_property_read_string_array(np, "phandle-list-names", strings, 1);
 	unittest(rc == 1 && strings[1] == NULL, "Overwrote end of string array; rc=%i, str='%s'\n", rc, strings[1]);
+
+	/* of_property_read_string_array_index() tests */
+	rc = of_property_read_string_array_index(np, "string-property", strings, 4, 0);
+	unittest(rc == 1, "Incorrect string count; rc=%i\n", rc);
+	rc = of_property_read_string_array_index(np, "string-property", strings, 4, 1);
+	unittest(rc == -ENODATA, "Incorrect return value; rc=%i\n", rc);
+	rc = of_property_read_string_array_index(np, "phandle-list-names", strings, 2, 0);
+	unittest(rc == 2 && !strcmp(strings[0], "first") && !strcmp(strings[1], "second"),
+		 "of_property_read_string_array_index() failure; rc=%i\n", rc);
+	rc = of_property_read_string_array_index(np, "phandle-list-names", strings, 2, 1);
+	unittest(rc == 2 && !strcmp(strings[0], "second") && !strcmp(strings[1], "third"),
+		 "of_property_read_string_array_index() failure; rc=%i\n", rc);
+	rc = of_property_read_string_array_index(np, "phandle-list-names", strings, 4, 1);
+	unittest(rc == 2 && !strcmp(strings[0], "second") && !strcmp(strings[1], "third"),
+		 "of_property_read_string_array_index() failure; rc=%i\n", rc);
+	rc = of_property_read_string_array_index(np, "phandle-list-names", strings, 1, 2);
+	unittest(rc == 1 && !strcmp(strings[0], "third"),
+		 "of_property_read_string_array_index() failure; rc=%i\n", rc);
+	rc = of_property_read_string_array_index(np, "phandle-list-names", strings, 1, 3);
+	unittest(rc == -ENODATA, "Incorrect return value; rc=%i\n", rc);
 }
 
 #define propcmp(p1, p2) (((p1)->length == (p2)->length) && \
