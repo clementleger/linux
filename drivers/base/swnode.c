@@ -184,9 +184,10 @@ static int property_entry_read_int_array(const struct property_entry *props,
 
 static int property_entry_read_string_array(const struct property_entry *props,
 					    const char *propname,
-					    const char **strings, size_t nval)
+					    const char **strings, size_t nval,
+					    int index)
 {
-	const void *pointer;
+	const char * const *pointer;
 	size_t length;
 	int array_len;
 
@@ -200,14 +201,17 @@ static int property_entry_read_string_array(const struct property_entry *props,
 	if (!strings)
 		return array_len;
 
-	array_len = min_t(size_t, nval, array_len);
-	length = array_len * sizeof(*strings);
+	if (index >= array_len)
+		return -ENODATA;
 
+	length = array_len * sizeof(*strings);
 	pointer = property_entry_find(props, propname, length);
 	if (IS_ERR(pointer))
 		return PTR_ERR(pointer);
 
-	memcpy(strings, pointer, length);
+	array_len = min_t(size_t, nval, array_len - index);
+	length = array_len * sizeof(*strings);
+	memcpy(strings, pointer + index, length);
 
 	return array_len;
 }
@@ -400,12 +404,13 @@ static int software_node_read_int_array(const struct fwnode_handle *fwnode,
 
 static int software_node_read_string_array(const struct fwnode_handle *fwnode,
 					   const char *propname,
-					   const char **val, size_t nval)
+					   const char **val, size_t nval,
+					   int index)
 {
 	struct swnode *swnode = to_swnode(fwnode);
 
 	return property_entry_read_string_array(swnode->node->properties,
-						propname, val, nval);
+						propname, val, nval, index);
 }
 
 static const char *

@@ -1293,8 +1293,11 @@ acpi_fwnode_property_read_int_array(const struct fwnode_handle *fwnode,
 static int
 acpi_fwnode_property_read_string_array(const struct fwnode_handle *fwnode,
 				       const char *propname, const char **val,
-				       size_t nval)
+				       size_t nval, int index)
 {
+	if (index != 0)
+		return -EINVAL;
+
 	return acpi_node_prop_read(fwnode, propname, DEV_PROP_STRING,
 				   val, nval);
 }

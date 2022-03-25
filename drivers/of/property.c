@@ -906,12 +906,13 @@ static int of_fwnode_property_read_int_array(const struct fwnode_handle *fwnode,
 static int
 of_fwnode_property_read_string_array(const struct fwnode_handle *fwnode,
 				     const char *propname, const char **val,
-				     size_t nval)
+				     size_t nval, int index)
 {
 	const struct device_node *node = to_of_node(fwnode);
 
 	return val ?
-		of_property_read_string_array(node, propname, val, nval) :
+		of_property_read_string_array_index(node, propname, val, nval,
+						    index) :
 		of_property_count_strings(node, propname);
 }
 

@@ -372,12 +372,12 @@ int fwnode_property_read_string_array(const struct fwnode_handle *fwnode,
 	int ret;
 
 	ret = fwnode_call_int_op(fwnode, property_read_string_array, propname,
-				 val, nval);
+				 val, nval, 0);
 	if (ret == -EINVAL && !IS_ERR_OR_NULL(fwnode) &&
 	    !IS_ERR_OR_NULL(fwnode->secondary))
 		ret = fwnode_call_int_op(fwnode->secondary,
 					 property_read_string_array, propname,
-					 val, nval);
+					 val, nval, 0);
 	return ret;
 }
 EXPORT_SYMBOL_GPL(fwnode_property_read_string_array);
