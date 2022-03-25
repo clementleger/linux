@@ -318,6 +318,24 @@ static void pe_test_strings(struct kunit *test)
 	KUNIT_EXPECT_EQ(test, error, 0);
 	KUNIT_EXPECT_STREQ(test, str, "string-a");
 
+	error = fwnode_property_read_string_index(node, "str", 0, strs);
+	KUNIT_EXPECT_EQ(test, error, 0);
+	KUNIT_EXPECT_STREQ(test, strs[0], "single");
+
+	error = fwnode_property_read_string_index(node, "strs", 0, strs);
+	KUNIT_EXPECT_EQ(test, error, 0);
+	KUNIT_EXPECT_STREQ(test, strs[0], "string-a");
+
+	error = fwnode_property_read_string_index(node, "strs", 1, strs);
+	KUNIT_EXPECT_EQ(test, error, 0);
+	KUNIT_EXPECT_STREQ(test, strs[0], "string-b");
+
+	error = fwnode_property_read_string_index(node, "str", 1, strs);
+	KUNIT_EXPECT_EQ(test, error, -ENODATA);
+
+	error = fwnode_property_read_string_index(node, "strs", 3, strs);
+	KUNIT_EXPECT_EQ(test, error, -ENODATA);
+
 	fwnode_remove_software_node(node);
 }
 
