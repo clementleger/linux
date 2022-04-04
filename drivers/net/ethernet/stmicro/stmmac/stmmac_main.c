@@ -7287,6 +7287,9 @@ int stmmac_dvr_probe(struct device *device,
 			goto error_xpcs_setup;
 	}
 
+	if (priv->plat->pcs)
+		priv->hw->phylink_pcs = priv->plat->pcs;
+
 	ret = stmmac_phy_setup(priv);
 	if (ret) {
 		netdev_err(ndev, "failed to setup phy (%d)\n", ret);

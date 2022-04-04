@@ -272,5 +272,6 @@ struct plat_stmmacenet_data {
 	bool use_phy_wol;
 	bool sph_disable;
 	bool serdes_up_after_phy_linkup;
+	struct phylink_pcs *pcs;
 };
 #endif
