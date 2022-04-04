@@ -413,6 +413,7 @@ int stmmac_xpcs_setup(struct mii_bus *bus)
 		}
 
 		priv->hw->xpcs = xpcs;
+		priv->hw->phylink_pcs = &xpcs->pcs;
 		break;
 	}
 
