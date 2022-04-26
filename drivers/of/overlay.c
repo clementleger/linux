@@ -730,7 +730,8 @@ static struct device_node *find_target(struct device_node *info_node)
  * detected in @tree, or -ENOSPC if idr_alloc() error.
  */
 static int init_overlay_changeset(struct overlay_changeset *ovcs,
-		const void *fdt, struct device_node *tree)
+		const void *fdt, struct device_node *tree,
+		struct device_node *target)
 {
 	struct device_node *node, *overlay_node;
 	struct fragment *fragment;
@@ -792,7 +793,10 @@ static int init_overlay_changeset(struct overlay_changeset *ovcs,
 
 		fragment = &fragments[cnt];
 		fragment->overlay = overlay_node;
-		fragment->target = find_target(node);
+		if (target)
+			fragment->target = target;
+		else
+			fragment->target = find_target(node);
 		if (!fragment->target) {
 			of_node_put(fragment->overlay);
 			ret = -EINVAL;
@@ -877,6 +881,7 @@ static void free_overlay_changeset(struct overlay_changeset *ovcs)
  * @fdt:	base of memory allocated to hold the aligned FDT
  * @tree:	Expanded overlay device tree
  * @ovcs_id:	Pointer to overlay changeset id
+ * @target:	Target node to override target-path property value
  *
  * Creates and applies an overlay changeset.
  *
@@ -914,7 +919,7 @@ static void free_overlay_changeset(struct overlay_changeset *ovcs)
  */
 
 static int of_overlay_apply(const void *fdt, struct device_node *tree,
-		int *ovcs_id)
+		int *ovcs_id, struct device_node *target)
 {
 	struct overlay_changeset *ovcs;
 	int ret = 0, ret_revert, ret_tmp;
@@ -947,7 +952,7 @@ static int of_overlay_apply(const void *fdt, struct device_node *tree,
 	if (ret)
 		goto err_free_tree;
 
-	ret = init_overlay_changeset(ovcs, fdt, tree);
+	ret = init_overlay_changeset(ovcs, fdt, tree, target);
 	if (ret)
 		goto err_free_tree;
 
@@ -1014,8 +1019,8 @@ out:
 	return ret;
 }
 
-int of_overlay_fdt_apply(const void *overlay_fdt, u32 overlay_fdt_size,
-			 int *ovcs_id)
+int of_overlay_fdt_apply_to_node(const void *overlay_fdt, u32 overlay_fdt_size,
+				 int *ovcs_id, struct device_node *target)
 {
 	void *new_fdt;
 	void *new_fdt_align;
@@ -1053,7 +1058,7 @@ int of_overlay_fdt_apply(const void *overlay_fdt, u32 overlay_fdt_size,
 		goto out_free_new_fdt;
 	}
 
-	ret = of_overlay_apply(new_fdt, overlay_root, ovcs_id);
+	ret = of_overlay_apply(new_fdt, overlay_root, ovcs_id, target);
 	if (ret < 0) {
 		/*
 		 * new_fdt and overlay_root now belong to the overlay
@@ -1072,7 +1077,7 @@ out_free_new_fdt:
 out:
 	return ret;
 }
-EXPORT_SYMBOL_GPL(of_overlay_fdt_apply);
+EXPORT_SYMBOL_GPL(of_overlay_fdt_apply_to_node);
 
 /*
  * Find @np in @tree.
