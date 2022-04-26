@@ -1590,8 +1590,8 @@ struct of_overlay_notify_data {
 
 #ifdef CONFIG_OF_OVERLAY
 
-int of_overlay_fdt_apply(const void *overlay_fdt, u32 overlay_fdt_size,
-			 int *ovcs_id);
+int of_overlay_fdt_apply_to_node(const void *overlay_fdt, u32 overlay_fdt_size,
+				 int *ret_ovcs_id, struct device_node *target);
 int of_overlay_remove(int *ovcs_id);
 int of_overlay_remove_all(void);
 
@@ -1600,8 +1600,9 @@ int of_overlay_notifier_unregister(struct notifier_block *nb);
 
 #else
 
-static inline int of_overlay_fdt_apply(void *overlay_fdt, u32 overlay_fdt_size,
-				       int *ovcs_id)
+static inline
+int of_overlay_fdt_apply_to_node(const void *overlay_fdt, u32 overlay_fdt_size,
+				 int *ret_ovcs_id, struct device_node *target)
 {
 	return -ENOTSUPP;
 }
@@ -1627,5 +1628,12 @@ static inline int of_overlay_notifier_unregister(struct notifier_block *nb)
 }
 
 #endif
+
+static inline int of_overlay_fdt_apply(const void *overlay_fdt,
+				       u32 overlay_fdt_size, int *ret_ovcs_id)
+{
+	return of_overlay_fdt_apply_to_node(overlay_fdt, overlay_fdt_size,
+					    ret_ovcs_id, NULL);
+}
 
 #endif /* _LINUX_OF_H */
