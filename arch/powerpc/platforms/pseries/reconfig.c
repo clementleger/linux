@@ -24,17 +24,9 @@ static int pSeries_reconfig_add_node(const char *path, struct property *proplist
 	struct device_node *np;
 	int err = -ENOMEM;
 
-	np = kzalloc(sizeof(*np), GFP_KERNEL);
+	np = of_node_alloc(kbasename(path), GFP_KERNEL);
 	if (!np)
-		goto out_err;
-
-	np->full_name = kstrdup(kbasename(path), GFP_KERNEL);
-	if (!np->full_name)
-		goto out_err;
-
-	np->properties = proplist;
-	of_node_set_flag(np, OF_DYNAMIC);
-	of_node_init(np);
+		return -ENOMEM;
 
 	np->parent = pseries_of_derive_parent(path);
 	if (IS_ERR(np->parent)) {
@@ -55,8 +47,7 @@ static int pSeries_reconfig_add_node(const char *path, struct property *proplist
 out_err:
 	if (np) {
 		of_node_put(np->parent);
-		kfree(np->full_name);
-		kfree(np);
+		of_node_put(np);
 	}
 	return err;
 }
@@ -91,9 +82,7 @@ static void release_prop_list(const struct property *prop)
 	struct property *next;
 	for (; prop; prop = next) {
 		next = prop->next;
-		kfree(prop->name);
-		kfree(prop->value);
-		kfree(prop);
+		of_property_free(prop);
 	}
 
 }
@@ -167,27 +156,17 @@ static char * parse_next_property(char *buf, char *end, char **name, int *length
 static struct property *new_property(const char *name, const int length,
 				     const unsigned char *value, struct property *last)
 {
-	struct property *new = kzalloc(sizeof(*new), GFP_KERNEL);
+	struct property *prop;
 
-	if (!new)
+	prop = of_property_alloc(name, NULL, length + 1, GFP_KERNEL);
+	if (!prop)
 		return NULL;
 
-	if (!(new->name = kstrdup(name, GFP_KERNEL)))
-		goto cleanup;
-	if (!(new->value = kmalloc(length + 1, GFP_KERNEL)))
-		goto cleanup;
+	memcpy(prop->value, value, length);
+	*(((char *)prop->value) + length) = 0;
+	prop->next = last;
 
-	memcpy(new->value, value, length);
-	*(((char *)new->value) + length) = 0;
-	new->length = length;
-	new->next = last;
-	return new;
-
-cleanup:
-	kfree(new->name);
-	kfree(new->value);
-	kfree(new);
-	return NULL;
+	return prop;
 }
 
 static int do_add_node(char *buf, size_t bufsize)
