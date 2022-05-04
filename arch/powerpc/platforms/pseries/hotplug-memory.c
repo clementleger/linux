@@ -69,33 +69,16 @@ unsigned long pseries_memory_block_size(void)
 	return memblock_size;
 }
 
-static void dlpar_free_property(struct property *prop)
-{
-	kfree(prop->name);
-	kfree(prop->value);
-	kfree(prop);
-}
-
 static struct property *dlpar_clone_property(struct property *prop,
 					     u32 prop_size)
 {
-	struct property *new_prop;
-
-	new_prop = kzalloc(sizeof(*new_prop), GFP_KERNEL);
+	struct property *new_prop = of_property_alloc(prop->name, NULL,
+						      prop_size);
 	if (!new_prop)
 		return NULL;
 
-	new_prop->name = kstrdup(prop->name, GFP_KERNEL);
-	new_prop->value = kzalloc(prop_size, GFP_KERNEL);
-	if (!new_prop->name || !new_prop->value) {
-		dlpar_free_property(new_prop);
-		return NULL;
-	}
-
 	memcpy(new_prop->value, prop->value, prop->length);
-	new_prop->length = prop_size;
 
-	of_property_set_flag(new_prop, OF_DYNAMIC);
 	return new_prop;
 }
 

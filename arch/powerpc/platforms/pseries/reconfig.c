@@ -19,46 +19,29 @@
 
 #include "of_helpers.h"
 
-static int pSeries_reconfig_add_node(const char *path, struct property *proplist)
+static struct device_node *pSeries_reconfig_add_node(const char *path)
 {
-	struct device_node *np;
-	int err = -ENOMEM;
+	struct device_node *np, *parent;
 
-	np = kzalloc(sizeof(*np), GFP_KERNEL);
-	if (!np)
-		goto out_err;
-
-	np->full_name = kstrdup(kbasename(path), GFP_KERNEL);
-	if (!np->full_name)
-		goto out_err;
-
-	np->properties = proplist;
-	of_node_set_flag(np, OF_DYNAMIC);
-	of_node_init(np);
-
-	np->parent = pseries_of_derive_parent(path);
-	if (IS_ERR(np->parent)) {
-		err = PTR_ERR(np->parent);
-		goto out_err;
-	}
-
-	err = of_attach_node(np);
-	if (err) {
-		printk(KERN_ERR "Failed to add device node %s\n", path);
-		goto out_err;
-	}
-
-	of_node_put(np->parent);
-
-	return 0;
-
-out_err:
+	np = of_find_node_by_path(path)
 	if (np) {
-		of_node_put(np->parent);
-		kfree(np->full_name);
-		kfree(np);
+		of_node_put(np);
+		return ERR_PTR(-EINVAL);
 	}
-	return err;
+
+	parent = pseries_of_derive_parent(path);
+	if (IS_ERR(parent))
+		return parent;
+
+	np = of_node_alloc(kbasename(path));
+	if (!np) {
+		of_node_put(parent);
+		return ERR_PTR(-ENOMEM);
+	}
+
+	np->parent = parent;
+
+	return np;
 }
 
 static int pSeries_reconfig_remove_node(struct device_node *np)
@@ -78,24 +61,6 @@ static int pSeries_reconfig_remove_node(struct device_node *np)
 	of_detach_node(np);
 	of_node_put(parent);
 	return 0;
-}
-
-/*
- * /proc/powerpc/ofdt - yucky binary interface for adding and removing
- * OF device nodes.  Should be deprecated as soon as we get an
- * in-kernel wrapper for the RTAS ibm,configure-connector call.
- */
-
-static void release_prop_list(const struct property *prop)
-{
-	struct property *next;
-	for (; prop; prop = next) {
-		next = prop->next;
-		kfree(prop->name);
-		kfree(prop->value);
-		kfree(prop);
-	}
-
 }
 
 /**
@@ -148,7 +113,7 @@ static char * parse_next_property(char *buf, char *end, char **name, int *length
 	/* now we're on the value */
 	*value = tmp;
 	tmp += *length;
-	if (tmp > end) {
+	if (tmp >= end) {
 		printk(KERN_ERR "property parse failed in %s at line %d\n",
 		       __func__, __LINE__);
 		return NULL;
@@ -158,6 +123,7 @@ static char * parse_next_property(char *buf, char *end, char **name, int *length
 		       __func__, __LINE__);
 		return NULL;
 	}
+	*tmp = '\0';
 	tmp++;
 
 	/* and now we should be on the next name, or the end */
@@ -167,27 +133,15 @@ static char * parse_next_property(char *buf, char *end, char **name, int *length
 static struct property *new_property(const char *name, const int length,
 				     const unsigned char *value, struct property *last)
 {
-	struct property *new = kzalloc(sizeof(*new), GFP_KERNEL);
+	struct property *prop;
 
-	if (!new)
+	prop = of_property_alloc(name, value, length);
+	if (!prop)
 		return NULL;
 
-	if (!(new->name = kstrdup(name, GFP_KERNEL)))
-		goto cleanup;
-	if (!(new->value = kmalloc(length + 1, GFP_KERNEL)))
-		goto cleanup;
+	prop->next = last;
 
-	memcpy(new->value, value, length);
-	*(((char *)new->value) + length) = 0;
-	new->length = length;
-	new->next = last;
-	return new;
-
-cleanup:
-	kfree(new->name);
-	kfree(new->value);
-	kfree(new);
-	return NULL;
+	return prop;
 }
 
 static int do_add_node(char *buf, size_t bufsize)
@@ -203,13 +157,13 @@ static int do_add_node(char *buf, size_t bufsize)
 	buf = strchr(buf, ' ');
 	if (!buf)
 		return -EINVAL;
+
 	*buf = '\0';
 	buf++;
 
-	if ((np = of_find_node_by_path(path))) {
-		of_node_put(np);
-		return -EINVAL;
-	}
+	np = pSeries_reconfig_add_node(path);
+	if (IS_ERR(np))
+		return PTR_ERR(np);
 
 	/* rv = build_prop_list(tmp, bufsize - (tmp - buf), &proplist); */
 	while (buf < end &&
@@ -217,22 +171,29 @@ static int do_add_node(char *buf, size_t bufsize)
 		struct property *last = prop;
 
 		prop = new_property(name, length, value, last);
-		if (!prop) {
-			rv = -ENOMEM;
-			prop = last;
+		if (!prop)
 			goto out;
-		}
+
+		np->properties = prop;
 	}
 	if (!buf) {
 		rv = -EINVAL;
 		goto out;
 	}
 
-	rv = pSeries_reconfig_add_node(path, prop);
+	rv = of_attach_node(np);
+	if (rv) {
+		pr_err("Failed to attach node %pOF\n", np);
+		goto out;
+	}
 
+	of_node_put(np->parent);
+
+	return 0;
 out:
-	if (rv)
-		release_prop_list(prop);
+	of_node_put(np->parent);
+	of_node_put(np);
+
 	return rv;
 }
 

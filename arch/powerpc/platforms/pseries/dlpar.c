@@ -38,75 +38,25 @@ struct cc_workarea {
 	__be32	prop_offset;
 };
 
-void dlpar_free_cc_property(struct property *prop)
-{
-	kfree(prop->name);
-	kfree(prop->value);
-	kfree(prop);
-}
-
 static struct property *dlpar_parse_cc_property(struct cc_workarea *ccwa)
 {
-	struct property *prop;
-	char *name;
-	char *value;
-
-	prop = kzalloc(sizeof(*prop), GFP_KERNEL);
-	if (!prop)
-		return NULL;
+	int length;
+	char *name, *value;
 
 	name = (char *)ccwa + be32_to_cpu(ccwa->name_offset);
-	prop->name = kstrdup(name, GFP_KERNEL);
-	if (!prop->name) {
-		dlpar_free_cc_property(prop);
-		return NULL;
-	}
-
-	prop->length = be32_to_cpu(ccwa->prop_length);
+	length = be32_to_cpu(ccwa->prop_length);
 	value = (char *)ccwa + be32_to_cpu(ccwa->prop_offset);
-	prop->value = kmemdup(value, prop->length, GFP_KERNEL);
-	if (!prop->value) {
-		dlpar_free_cc_property(prop);
-		return NULL;
-	}
 
-	return prop;
+	return of_property_alloc(name, value, length);
 }
 
 static struct device_node *dlpar_parse_cc_node(struct cc_workarea *ccwa)
 {
-	struct device_node *dn;
 	const char *name;
 
-	dn = kzalloc(sizeof(*dn), GFP_KERNEL);
-	if (!dn)
-		return NULL;
-
 	name = (const char *)ccwa + be32_to_cpu(ccwa->name_offset);
-	dn->full_name = kstrdup(name, GFP_KERNEL);
-	if (!dn->full_name) {
-		kfree(dn);
-		return NULL;
-	}
 
-	of_node_set_flag(dn, OF_DYNAMIC);
-	of_node_init(dn);
-
-	return dn;
-}
-
-static void dlpar_free_one_cc_node(struct device_node *dn)
-{
-	struct property *prop;
-
-	while (dn->properties) {
-		prop = dn->properties;
-		dn->properties = prop->next;
-		dlpar_free_cc_property(prop);
-	}
-
-	kfree(dn->full_name);
-	kfree(dn);
+	return of_node_alloc(name);
 }
 
 void dlpar_free_cc_nodes(struct device_node *dn)
@@ -117,7 +67,7 @@ void dlpar_free_cc_nodes(struct device_node *dn)
 	if (dn->sibling)
 		dlpar_free_cc_nodes(dn->sibling);
 
-	dlpar_free_one_cc_node(dn);
+	of_node_put(dn);
 }
 
 #define COMPLETE	0
