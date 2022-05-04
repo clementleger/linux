@@ -359,7 +359,9 @@ void of_node_release(struct kobject *kobj)
 	property_list_free(node->deadprops);
 	fwnode_links_purge(of_fwnode_handle(node));
 
-	kfree(node->full_name);
+	if (node->full_name != (const char *) (node + 1))
+		kfree(node->full_name);
+
 	kfree(node->data);
 	kfree(node);
 }
@@ -427,6 +429,42 @@ out_err:
 EXPORT_SYMBOL(of_property_alloc);
 
 /**
+ * of_node_alloc - Allocate a node dynamically.
+ * @name:	Node name
+ *
+ * Create a node by dynamically allocating the memory of both the
+ * node structure and the node name & contents. The node's
+ * flags have the OF_DYNAMIC & OF_DETACHED bit set so that we can
+ * differentiate between dynamically allocated nodes and not.
+ *
+ * Return: The newly allocated node or NULL on out of memory error.
+ */
+struct device_node *of_node_alloc(const char *name)
+{
+	struct device_node *node;
+	int name_len = 0;
+
+	if (name)
+		name_len = strlen(name) + 1;
+
+	node = kzalloc(sizeof(*node) + name_len, GFP_KERNEL);
+	if (!node)
+		return NULL;
+
+	if (name) {
+		node->full_name = (const char *) (node + 1);
+		strcpy((char *)node->full_name, name);
+	}
+
+	of_node_set_flag(node, OF_DYNAMIC);
+	of_node_set_flag(node, OF_DETACHED);
+	of_node_init(node);
+
+	return node;
+}
+EXPORT_SYMBOL(of_node_alloc);
+
+/**
  * __of_node_dup() - Duplicate or create an empty device node dynamically.
  * @np:		if not NULL, contains properties to be duplicated in new node
  * @full_name:	string value to be duplicated into new node's full_name field
@@ -442,24 +480,15 @@ struct device_node *__of_node_dup(const struct device_node *np,
 {
 	struct device_node *node;
 
-	node = kzalloc(sizeof(*node), GFP_KERNEL);
+	node = of_node_alloc(full_name);
 	if (!node)
 		return NULL;
-	node->full_name = kstrdup(full_name, GFP_KERNEL);
-	if (!node->full_name) {
-		kfree(node);
-		return NULL;
-	}
-
-	of_node_set_flag(node, OF_DYNAMIC);
-	of_node_set_flag(node, OF_DETACHED);
-	of_node_init(node);
 
 	/* Iterate over and duplicate all properties */
 	if (np) {
 		struct property *pp, *new_pp;
 		for_each_property_of_node(np, pp) {
-			new_pp = __of_prop_dup(pp, GFP_KERNEL);
+			new_pp = __of_prop_dup(pp);
 			if (!new_pp)
 				goto err_prop;
 			if (__of_add_property(node, new_pp)) {
