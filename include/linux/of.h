@@ -1408,6 +1408,10 @@ enum of_reconfig_change {
 };
 
 #ifdef CONFIG_OF_DYNAMIC
+struct property *of_property_alloc(const char *name, const void *value, int len,
+				   gfp_t allocflags);
+void of_property_free(const struct property *prop);
+
 extern int of_reconfig_notifier_register(struct notifier_block *);
 extern int of_reconfig_notifier_unregister(struct notifier_block *);
 extern int of_reconfig_notify(unsigned long, struct of_reconfig_data *rd);
@@ -1452,6 +1456,16 @@ static inline int of_changeset_update_property(struct of_changeset *ocs,
 	return of_changeset_action(ocs, OF_RECONFIG_UPDATE_PROPERTY, np, prop);
 }
 #else /* CONFIG_OF_DYNAMIC */
+
+static inline
+struct property *of_property_alloc(const char *name, const void *value, int len,
+				   gfp_t allocflags)
+{
+	return NULL;
+}
+
+static inline  void of_property_free(const struct property *prop) {}
+
 static inline int of_reconfig_notifier_register(struct notifier_block *nb)
 {
 	return -EINVAL;
