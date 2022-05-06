@@ -631,6 +631,7 @@ void pci_set_of_node(struct pci_dev *dev);
 void pci_release_of_node(struct pci_dev *dev);
 void pci_set_bus_of_node(struct pci_bus *bus);
 void pci_release_bus_of_node(struct pci_bus *bus);
+struct device_node *pci_get_of_node(struct pci_dev *dev);
 
 int devm_of_pci_bridge_init(struct device *dev, struct pci_host_bridge *bridge);
 
