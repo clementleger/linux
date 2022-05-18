@@ -3818,6 +3818,12 @@ static int __stmmac_open(struct net_device *dev,
 		}
 	}
 
+	/* We need to setup the phy & PCS before accessing the stmmac registers
+	 * because in some cases (RZ/N1), if the stmmac IP is not clocked by the
+	 * PCS, hardware init will fail because it lacks a RGMII RX clock.
+	 */
+	phylink_start(priv->phylink);
+
 	ret = stmmac_hw_setup(dev, true);
 	if (ret < 0) {
 		netdev_err(priv->dev, "%s: Hw setup failed\n", __func__);
@@ -3826,7 +3832,6 @@ static int __stmmac_open(struct net_device *dev,
 
 	stmmac_init_coalesce(priv);
 
-	phylink_start(priv->phylink);
 	/* We may have called phylink_speed_down before */
 	phylink_speed_up(priv->phylink);
 
