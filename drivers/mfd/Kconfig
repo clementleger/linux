@@ -136,6 +136,7 @@ config MFD_AT91_USART
 config MFD_ATMEL_FLEXCOM
 	tristate "Atmel Flexcom (Flexible Serial Communication Unit)"
 	select MFD_CORE
+	select MULTIPLEXER
 	depends on OF
 	help
 	  Select this to get support for Atmel Flexcom. This is a wrapper
