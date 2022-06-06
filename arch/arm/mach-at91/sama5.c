@@ -20,15 +20,7 @@
 
 void sama5_l2c310_write_sec(unsigned long val, unsigned reg)
 {
-	struct arm_smccc_res res;
-
-	if (reg == L2X0_CTRL) {
-		res = sam_smccc_call(SAMA5_SMC_SIP_L2X0_WRITE_CTRL, reg, val);
-		if (res.a0 != SAMA5_SMC_SIP_RETURN_SUCCESS)
-			pr_warn("PL310 write ctrl failed\n");
-	} else {
-		WARN_ONCE(1, "PL310 ignoring write to reg 0x%x\n", reg);
-	}
+	/* OP-TEE configures the L2 cache and does not allow modifying it yet */
 }
 
 static void __init sama5_secure_cache_init(void)
