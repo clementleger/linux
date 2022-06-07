@@ -157,6 +157,7 @@ static const struct of_device_id mchp_sparx5_reset_of_match[] = {
 	},
 	{ }
 };
+MODULE_DEVICE_TABLE(of, mchp_sparx5_reset_of_match);
 
 static struct platform_driver mchp_sparx5_reset_driver = {
 	.probe = mchp_sparx5_reset_probe,
@@ -176,6 +177,12 @@ static int __init mchp_sparx5_reset_init(void)
  * reset as early as possible during the kernel startup.
  */
 postcore_initcall(mchp_sparx5_reset_init);
+
+static void __exit mchp_sparx5_reset_exit(void)
+{
+	platform_driver_unregister(&mchp_sparx5_reset_driver);
+}
+module_exit(mchp_sparx5_reset_exit);
 
 MODULE_DESCRIPTION("Microchip Sparx5 switch reset driver");
 MODULE_AUTHOR("Steen Hegelund <steen.hegelund@microchip.com>");
