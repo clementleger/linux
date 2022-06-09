@@ -16,6 +16,231 @@
 #include "pci.h"
 
 #ifdef CONFIG_PCI
+
+static int of_pci_add_property(struct of_changeset *ocs, struct device_node *np,
+			       const char *name, const void *value, int length)
+{
+	int ret;
+	struct property *prop = of_property_alloc(name, value, length,
+						  GFP_KERNEL);
+	if (!prop)
+		return -ENOMEM;
+
+	ret = of_changeset_add_property(ocs, np, prop);
+	if (ret)
+		of_property_free(prop);
+
+	return ret;
+}
+
+static int of_pci_add_cells_props(struct device_node *node,
+				  struct of_changeset *cs, int n_addr_cells,
+				  int n_size_cells)
+{
+	__be32 val;
+	int ret;
+
+	val = cpu_to_be32(n_addr_cells);
+	ret = of_pci_add_property(cs, node, "#address-cells", &val,
+				  sizeof(__be32));
+	if (ret)
+		return ret;
+
+	val = cpu_to_be32(n_size_cells);
+	return of_pci_add_property(cs, node, "#size-cells", &val,
+				   sizeof(__be32));
+}
+
+static int of_pci_add_pci_bus_props(struct device_node *node,
+				    struct of_changeset *cs)
+{
+	int ret;
+
+	ret = of_pci_add_property(cs, node, "device_type", "pci",
+				  strlen("pci") + 1);
+	if (ret)
+		return ret;
+
+	return of_pci_add_cells_props(node, cs, 3, 2);
+}
+
+static int pci_host_bridge_create_ranges(struct pci_bus *bus,
+				      struct device_node *node,
+			  	      struct of_changeset *cs)
+{
+	__be32 ranges[PCI_BRIDGE_RESOURCE_NUM * 7];
+	int range_idx = 0;
+	struct resource_entry *entry;
+	struct pci_host_bridge *bridge = to_pci_host_bridge(bus->bridge);
+
+	resource_list_for_each_entry(entry, &bridge->windows) {
+		resource_size_t start = entry->res->start;
+		resource_size_t size = resource_size(entry->res);
+		unsigned long type = resource_type(entry->res);
+
+		if (!(type & IORESOURCE_MEM))
+			continue;
+
+		/* PCI bus address */
+		ranges[range_idx++] = cpu_to_be32(0x2 << 24);
+		ranges[range_idx++] = cpu_to_be32(start >> 32);
+		ranges[range_idx++] = cpu_to_be32(start);
+
+		/* Root bus address */
+		if (of_n_addr_cells(of_root) == 2)
+			ranges[range_idx++] = cpu_to_be32(start >> 32);
+		ranges[range_idx++] = cpu_to_be32(start);
+
+		/* Size */
+		ranges[range_idx++] = cpu_to_be32(size >> 32);
+		ranges[range_idx++] = cpu_to_be32(size);
+	}
+
+	return of_pci_add_property(cs, node, "ranges", ranges, range_idx * sizeof(__be32));
+}
+
+static struct device_node *of_pci_create_root_bus_node(struct pci_bus *bus)
+{
+	static struct of_changeset cs;
+	struct device_node *node;
+	int ret;
+
+	node = of_node_alloc("pci", GFP_KERNEL);
+	if (!node)
+		return NULL;
+
+	node->parent = of_root;
+
+	of_changeset_init(&cs);
+	ret = of_pci_add_pci_bus_props(node, &cs);
+	if (ret)
+		goto changeset_destroy;
+
+	ret = pci_host_bridge_create_ranges(bus, node, &cs);
+	if (ret)
+		goto changeset_destroy;
+
+	ret = of_changeset_attach_node(&cs, node);
+	if (ret)
+		goto changeset_destroy;
+
+	ret = of_changeset_apply(&cs);
+	if (ret)
+		goto changeset_destroy;
+
+	device_set_node(&bus->dev, of_fwnode_handle(node));
+
+	return node;
+
+changeset_destroy:
+	of_changeset_destroy(&cs);
+	kfree(node);
+
+	return NULL;
+}
+
+static struct device_node *of_pci_get_bus_node(struct pci_bus *bus)
+{
+	if (bus->self == NULL) {
+		if (bus->dev.of_node)
+			return of_node_get(bus->dev.of_node);
+
+		return of_pci_create_root_bus_node(bus);
+	} else {
+		return pci_get_of_node(bus->self);
+	}
+}
+
+static int pci_bridge_create_ranges(struct pci_dev *dev,
+				    struct device_node *node,
+			  	    struct of_changeset *cs)
+{
+	struct resource *res = &dev->resource[PCI_BRIDGE_MEM_WINDOW];
+	resource_size_t size = resource_size(res);
+	resource_size_t start = res->start;
+	__be32 ranges[8];
+
+	ranges[0] = cpu_to_be32(0x2 << 24);
+	ranges[1] = cpu_to_be32(start >> 32);
+	ranges[2] = cpu_to_be32(start);
+
+	ranges[3] = cpu_to_be32(0x2 << 24);
+	ranges[4] = cpu_to_be32(start >> 32);
+	ranges[5] = cpu_to_be32(start);
+
+	ranges[6] = cpu_to_be32(size >> 32);
+	ranges[7] = cpu_to_be32(size);
+
+	return of_pci_add_property(cs, node, "ranges", ranges, sizeof(ranges));
+}
+
+static struct device_node *of_pci_make_dev_node(struct pci_dev *dev)
+{
+	struct device_node *node, *parent;
+	static struct of_changeset cs;
+	const char *pci_type = "dev";
+	__be32 val[5] = {0};
+	int ret;
+
+	parent = of_pci_get_bus_node(dev->bus);
+	if (!parent)
+		return NULL;
+
+	node = of_node_alloc(NULL, GFP_KERNEL);
+	if (!node)
+		return NULL;
+
+	node->parent = parent;
+	of_changeset_init(&cs);
+
+	if (pci_is_bridge(dev)) {
+		ret = pci_bridge_create_ranges(dev, node, &cs);
+		if (ret)
+			goto changeset_destroy;
+
+		ret = of_pci_add_pci_bus_props(node, &cs);
+		if (ret)
+			goto changeset_destroy;
+		pci_type = "pci";
+	}
+
+	node->full_name = kasprintf(GFP_KERNEL, "%s@%x,%x", pci_type,
+				    PCI_SLOT(dev->devfn), PCI_FUNC(dev->devfn));
+
+	val[0] = cpu_to_be32(dev->devfn << 8);
+	val[4] = cpu_to_be32(SZ_4K);
+	ret = of_pci_add_property(&cs, node, "reg", val, 5 * sizeof(__be32));
+	if (ret)
+		goto changeset_destroy;
+
+	ret = of_changeset_attach_node(&cs, node);
+	if (ret)
+		goto changeset_destroy;
+
+	ret = of_changeset_apply(&cs);
+	if (ret)
+		goto changeset_destroy;
+
+	device_set_node(&dev->dev, of_fwnode_handle(node));
+
+	return node;
+
+changeset_destroy:
+	of_changeset_destroy(&cs);
+	kfree(node);
+
+	return NULL;
+}
+
+struct device_node *pci_get_of_node(struct pci_dev *dev)
+{
+	if (!dev->dev.of_node)
+		return of_pci_make_dev_node(dev);
+
+	return of_node_get(dev->dev.of_node);
+}
+EXPORT_SYMBOL_GPL(pci_get_of_node);
+
 void pci_set_of_node(struct pci_dev *dev)
 {
 	if (!dev->bus->dev.of_node)

@@ -9,11 +9,17 @@ struct pci_dev;
 struct device_node;
 
 #if IS_ENABLED(CONFIG_OF) && IS_ENABLED(CONFIG_PCI)
+struct device_node *pci_get_of_node(struct pci_dev *dev);
 struct device_node *of_pci_find_child_device(struct device_node *parent,
 					     unsigned int devfn);
 int of_pci_get_devfn(struct device_node *np);
 void of_pci_check_probe_only(void);
 #else
+static inline struct device_node *pci_get_of_node(struct pci_dev *dev)
+{
+	return NULL;
+}
+
 static inline struct device_node *of_pci_find_child_device(struct device_node *parent,
 					     unsigned int devfn)
 {
