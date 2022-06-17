@@ -369,7 +369,6 @@ void of_node_release(struct kobject *kobj)
 /**
  * __of_prop_dup - Copy a property dynamically.
  * @prop:	Property to copy
- * @allocflags:	Allocation flags (typically pass GFP_KERNEL)
  *
  * Copy a property by dynamically allocating the memory of both the
  * property structure and the property name & contents. The property's
@@ -378,11 +377,11 @@ void of_node_release(struct kobject *kobj)
  *
  * Return: The newly allocated property or NULL on out of memory error.
  */
-struct property *__of_prop_dup(const struct property *prop, gfp_t allocflags)
+struct property *__of_prop_dup(const struct property *prop)
 {
 	struct property *new;
 
-	new = kzalloc(sizeof(*new), allocflags);
+	new = kzalloc(sizeof(*new), GFP_KERNEL);
 	if (!new)
 		return NULL;
 
@@ -392,8 +391,8 @@ struct property *__of_prop_dup(const struct property *prop, gfp_t allocflags)
 	 * of zero bytes. We do this to work around the use
 	 * of of_get_property() calls on boolean values.
 	 */
-	new->name = kstrdup(prop->name, allocflags);
-	new->value = kmemdup(prop->value, prop->length, allocflags);
+	new->name = kstrdup(prop->name, GFP_KERNEL);
+	new->value = kmemdup(prop->value, prop->length, GFP_KERNEL);
 	new->length = prop->length;
 	if (!new->name || !new->value)
 		goto err_free;

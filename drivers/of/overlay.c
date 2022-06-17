@@ -339,7 +339,7 @@ static int add_changeset_property(struct overlay_changeset *ovcs,
 			return -EINVAL;
 		new_prop = dup_and_fixup_symbol_prop(ovcs, overlay_prop);
 	} else {
-		new_prop = __of_prop_dup(overlay_prop, GFP_KERNEL);
+		new_prop = __of_prop_dup(overlay_prop);
 	}
 
 	if (!new_prop)

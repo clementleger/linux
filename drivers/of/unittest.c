@@ -772,13 +772,13 @@ static void __init of_unittest_property_copy(void)
 	struct property p2 = { .name = "p2", .length = 5, .value = "abcd" };
 	struct property *new;
 
-	new = __of_prop_dup(&p1, GFP_KERNEL);
+	new = __of_prop_dup(&p1);
 	unittest(new && propcmp(&p1, new), "empty property didn't copy correctly\n");
 	kfree(new->value);
 	kfree(new->name);
 	kfree(new);
 
-	new = __of_prop_dup(&p2, GFP_KERNEL);
+	new = __of_prop_dup(&p2);
 	unittest(new && propcmp(&p2, new), "non-empty property didn't copy correctly\n");
 	kfree(new->value);
 	kfree(new->name);
@@ -811,19 +811,19 @@ static void __init of_unittest_changeset(void)
 	nremove = of_get_child_by_name(nchangeset, "node-remove");
 	unittest(nremove, "testcase setup failure\n");
 
-	ppadd = __of_prop_dup(&padd, GFP_KERNEL);
+	ppadd = __of_prop_dup(&padd);
 	unittest(ppadd, "testcase setup failure\n");
 
-	ppname_n1  = __of_prop_dup(&pname_n1, GFP_KERNEL);
+	ppname_n1  = __of_prop_dup(&pname_n1);
 	unittest(ppname_n1, "testcase setup failure\n");
 
-	ppname_n2  = __of_prop_dup(&pname_n2, GFP_KERNEL);
+	ppname_n2  = __of_prop_dup(&pname_n2);
 	unittest(ppname_n2, "testcase setup failure\n");
 
-	ppname_n21 = __of_prop_dup(&pname_n21, GFP_KERNEL);
+	ppname_n21 = __of_prop_dup(&pname_n21);
 	unittest(ppname_n21, "testcase setup failure\n");
 
-	ppupdate = __of_prop_dup(&pupdate, GFP_KERNEL);
+	ppupdate = __of_prop_dup(&pupdate);
 	unittest(ppupdate, "testcase setup failure\n");
 
 	parent = nchangeset;
@@ -3333,7 +3333,7 @@ static __init void of_unittest_overlay_high_level(void)
 		struct property *new_prop;
 		for_each_property_of_node(overlay_base_symbols, prop) {
 
-			new_prop = __of_prop_dup(prop, GFP_KERNEL);
+			new_prop = __of_prop_dup(prop);
 			if (!new_prop) {
 				unittest(0, "__of_prop_dup() of '%s' from overlay_base node __symbols__",
 					 prop->name);
