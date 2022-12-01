@@ -17,6 +17,7 @@
 
 #include "rzn1_a5psw.h"
 
+static u64 a5psw_read_disc_stat(struct a5psw *a5psw, u32 offset, int port);
 static u64 a5psw_read_stat(struct a5psw *a5psw, u32 offset, int port);
 
 struct a5psw_stats {
@@ -25,9 +26,18 @@ struct a5psw_stats {
 	u64 (*read_stat)(struct a5psw *a5psw, u32 offset, int port);
 };
 
-#define STAT_DESC(_offset) {	\
+#define __STAT_DESC(_offset) \
 	.offset = A5PSW_##_offset,	\
-	.name = __stringify(_offset),	\
+	.name = __stringify(_offset),
+
+#define STAT_DESC(_offset) {	\
+	__STAT_DESC(_offset)		\
+	.read_stat = a5psw_read_stat 	\
+}
+
+#define DISC_STAT_DESC(_offset) {	\
+	__STAT_DESC(_offset)		\
+	.read_stat = a5psw_read_disc_stat \
 }
 
 static const struct a5psw_stats a5psw_stats[] = {
@@ -69,6 +79,10 @@ static const struct a5psw_stats a5psw_stats[] = {
 	STAT_DESC(aLateCollisions),
 	STAT_DESC(aExcessiveCollisions),
 	STAT_DESC(aCarrierSenseErrors),
+	DISC_STAT_DESC(ODISC),
+	DISC_STAT_DESC(IDISC_VLAN),
+	DISC_STAT_DESC(IDISC_UNTAGGED),
+	DISC_STAT_DESC(IDISC_BLOCKED),
 };
 
 static void a5psw_reg_writel(struct a5psw *a5psw, int offset, u32 value)
@@ -699,6 +713,20 @@ out:
 	mutex_unlock(&a5psw->vlan_lock);
 
 	return ret;
+}
+
+static u64 a5psw_read_disc_stat(struct a5psw *a5psw, u32 offset, int port)
+{
+	u32 stat;
+
+	mutex_lock(&a5psw->mdio_lock);
+
+	stat = a5psw_reg_readl(a5psw, offset + A5PSW_DISC_PORT_OFFSET(port));
+	a5psw_reg_readl(a5psw, A5PSW_STAT_WORKAROUND);
+
+	mutex_unlock(&a5psw->mdio_lock);
+
+	return stat;
 }
 
 static u64 a5psw_read_stat(struct a5psw *a5psw, u32 offset, int port)
