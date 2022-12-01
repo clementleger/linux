@@ -987,17 +987,21 @@ static int a5psw_mdio_read(struct mii_bus *bus, int phy_id, int phy_reg)
 	cmd |= FIELD_PREP(A5PSW_MDIO_COMMAND_REG_ADDR, phy_reg);
 	cmd |= FIELD_PREP(A5PSW_MDIO_COMMAND_PHY_ADDR, phy_id);
 
+	mutex_lock(&a5psw->mdio_lock);
 	a5psw_reg_writel(a5psw, A5PSW_MDIO_COMMAND, cmd);
 
 	ret = a5psw_mdio_wait_busy(a5psw);
 	if (ret)
-		return ret;
+		goto err;
 
 	ret = a5psw_reg_readl(a5psw, A5PSW_MDIO_DATA) & A5PSW_MDIO_DATA_MASK;
 
 	status = a5psw_reg_readl(a5psw, A5PSW_MDIO_CFG_STATUS);
 	if (status & A5PSW_MDIO_CFG_STATUS_READERR)
-		return -EIO;
+		ret = -EIO;
+
+err:
+	mutex_unlock(&a5psw->mdio_lock);
 
 	return ret;
 }
@@ -1007,6 +1011,7 @@ static int a5psw_mdio_write(struct mii_bus *bus, int phy_id, int phy_reg,
 {
 	struct a5psw *a5psw = bus->priv;
 	u32 cmd;
+	int ret;
 
 	if (phy_reg & MII_ADDR_C45)
 		return -EOPNOTSUPP;
@@ -1014,10 +1019,14 @@ static int a5psw_mdio_write(struct mii_bus *bus, int phy_id, int phy_reg,
 	cmd = FIELD_PREP(A5PSW_MDIO_COMMAND_REG_ADDR, phy_reg);
 	cmd |= FIELD_PREP(A5PSW_MDIO_COMMAND_PHY_ADDR, phy_id);
 
+	mutex_lock(&a5psw->mdio_lock);
 	a5psw_reg_writel(a5psw, A5PSW_MDIO_COMMAND, cmd);
 	a5psw_reg_writel(a5psw, A5PSW_MDIO_DATA, phy_data);
 
-	return a5psw_mdio_wait_busy(a5psw);
+	ret = a5psw_mdio_wait_busy(a5psw);
+	mutex_unlock(&a5psw->mdio_lock);
+
+	return ret;
 }
 
 static int a5psw_mdio_config(struct a5psw *a5psw, u32 mdio_freq)
@@ -1144,6 +1153,7 @@ static int a5psw_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	a5psw->dev = dev;
+	mutex_init(&a5psw->mdio_lock);
 	mutex_init(&a5psw->vlan_lock);
 	mutex_init(&a5psw->lk_lock);
 	spin_lock_init(&a5psw->reg_lock);

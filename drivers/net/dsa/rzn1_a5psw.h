@@ -246,6 +246,7 @@ union lk_data {
  * @mdio_freq: MDIO bus frequency requested
  * @pcs: Array of PCS connected to the switch ports (not for the CPU)
  * @ds: DSA switch struct
+ * @mdio_lock: Lock for MDIO access
  * @stats_lock: lock to access statistics (shared HI counter)
  * @lk_lock: Lock for the lookup table
  * @vlan_lock: Lock for the vlan operation
@@ -261,6 +262,7 @@ struct a5psw {
 	struct mii_bus	*mii_bus;
 	struct phylink_pcs *pcs[A5PSW_PORTS_NUM - 1];
 	struct dsa_switch ds;
+	struct mutex mdio_lock;
 	struct mutex lk_lock;
 	struct mutex vlan_lock;
 	spinlock_t reg_lock;
