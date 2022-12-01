@@ -836,6 +836,19 @@ static void a5psw_vlan_setup(struct a5psw *a5psw, int port)
 		      A5PSW_VLAN_OUT_MODE_PORT(port), reg);
 }
 
+static void a5psw_setup_storm_limit(struct a5psw *a5psw)
+{
+	unsigned long rate = clk_get_rate(a5psw->clk) >> 16;
+	u32 reg;
+
+	/* Enable broadcast/multicast storm limit */
+	reg = FIELD_PREP(A5PSW_BCAST_STORM_VALUE, 2);
+	reg |= rate;
+
+	a5psw_reg_writel(a5psw, A5PSW_BCAST_STORM_LIMIT, reg);
+	a5psw_reg_writel(a5psw, A5PSW_MCAST_STORM_LIMIT, reg);
+}
+
 static int a5psw_setup(struct dsa_switch *ds)
 {
 	struct a5psw *a5psw = ds->priv;
@@ -877,6 +890,8 @@ static int a5psw_setup(struct dsa_switch *ds)
 		dev_err(a5psw->dev, "Failed to clear lookup table\n");
 		return ret;
 	}
+
+	a5psw_setup_storm_limit(a5psw);
 
 	/* Reset learn count to 0 */
 	reg = A5PSW_LK_LEARNCOUNT_MODE_SET;
