@@ -351,16 +351,19 @@ static void a5psw_port_stp_state_set(struct dsa_switch *ds, int port, u8 state)
 	switch (state) {
 	case BR_STATE_DISABLED:
 	case BR_STATE_BLOCKING:
-		reg |= A5PSW_INPUT_LEARN_DIS(port);
-		reg |= A5PSW_INPUT_LEARN_BLOCK(port);
-		break;
 	case BR_STATE_LISTENING:
 		reg |= A5PSW_INPUT_LEARN_DIS(port);
-		break;
+		fallthrough;
 	case BR_STATE_LEARNING:
 		reg |= A5PSW_INPUT_LEARN_BLOCK(port);
+		/* Remove the port from the default flooding resolution mask
+		 * since LEARN_BLOCK does not restrict the port from forwarding
+		 * multicast/broadcast packets.
+		 */
+		a5psw_flooding_set_resolution(a5psw, port, false);
 		break;
 	case BR_STATE_FORWARDING:
+		a5psw_flooding_set_resolution(a5psw, port, true);
 	default:
 		break;
 	}
@@ -849,7 +852,7 @@ static int a5psw_setup(struct dsa_switch *ds)
 	}
 
 	/* Configure management port */
-	reg = A5PSW_CPU_PORT | A5PSW_MGMT_CFG_DISCARD;
+	reg = A5PSW_CPU_PORT | A5PSW_MGMT_CFG_ENABLE;
 	a5psw_reg_writel(a5psw, A5PSW_MGMT_CFG, reg);
 
 	/* Set pattern 0 to forward all frame to mgmt port */
