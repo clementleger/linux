@@ -17,9 +17,12 @@
 
 #include "rzn1_a5psw.h"
 
+static u64 a5psw_read_stat(struct a5psw *a5psw, u32 offset, int port);
+
 struct a5psw_stats {
 	u16 offset;
 	const char name[ETH_GSTRING_LEN];
+	u64 (*read_stat)(struct a5psw *a5psw, u32 offset, int port);
 };
 
 #define STAT_DESC(_offset) {	\
@@ -730,7 +733,8 @@ static void a5psw_get_ethtool_stats(struct dsa_switch *ds, int port,
 	unsigned int u;
 
 	for (u = 0; u < ARRAY_SIZE(a5psw_stats); u++)
-		data[u] = a5psw_read_stat(a5psw, a5psw_stats[u].offset, port);
+		data[u] = a5psw_stats[u].read_stat(a5psw, a5psw_stats[u].offset,
+						   port);
 }
 
 static int a5psw_get_sset_count(struct dsa_switch *ds, int port, int sset)
