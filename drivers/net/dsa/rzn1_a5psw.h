@@ -275,4 +275,5 @@ struct a5psw {
 	spinlock_t reg_lock;
 	u32 bridged_ports;
 	struct net_device *br_dev;
+	struct dentry *dbg_dir;
 };

@@ -7,6 +7,7 @@
 
 #include <linux/clk.h>
 #include <linux/etherdevice.h>
+#include <linux/debugfs.h>
 #include <linux/if_bridge.h>
 #include <linux/if_ether.h>
 #include <linux/kernel.h>
@@ -84,6 +85,23 @@ static const struct a5psw_stats a5psw_stats[] = {
 	DISC_STAT_DESC(IDISC_UNTAGGED),
 	DISC_STAT_DESC(IDISC_BLOCKED),
 };
+
+static int mgmt_port_stat_show(struct seq_file *s, void *v)
+{
+	const struct a5psw_stats *stat;
+	struct a5psw *a5psw = s->private;
+	unsigned int u;
+	u64 val;
+
+	for (u = 0; u < ARRAY_SIZE(a5psw_stats); u++) {
+		stat = &a5psw_stats[u];
+		val = stat->read_stat(a5psw, stat->offset, A5PSW_CPU_PORT);
+		seq_printf(s, "%s: %lld\n", stat->name, val);
+	}
+
+	return 0;
+}
+DEFINE_SHOW_ATTRIBUTE(mgmt_port_stat);
 
 static void a5psw_reg_writel(struct a5psw *a5psw, int offset, u32 value)
 {
@@ -1242,6 +1260,10 @@ static int a5psw_probe(struct platform_device *pdev)
 		dev_err(dev, "Failed to register DSA switch: %d\n", ret);
 		goto hclk_disable;
 	}
+
+	a5psw->dbg_dir = debugfs_create_dir(pdev->name, NULL);
+	debugfs_create_file("mgmt_port_stat", 0444, a5psw->dbg_dir, a5psw,
+                            &mgmt_port_stat_fops);
 
 	return 0;
 
