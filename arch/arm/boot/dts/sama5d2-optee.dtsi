@@ -143,6 +143,10 @@
 	status = "disabled";
 };
 
+&i2c0 {
+	status = "disabled";
+};
+
 /*
  * Use fixed-clock for TCB since SCMI clocks are probed too late for
  * clocksource
