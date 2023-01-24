@@ -69,7 +69,7 @@
 			method = "smc";
 			compatible = "linaro,optee-tz";
 		};
-		scmi0 {
+		scmi0: scmi0 {
 			compatible = "arm,scmi-smc";
 			shmem = <&scmi0_shmem>;
 			arm,smc-id = <0x2000200>;
@@ -140,10 +140,6 @@
 };
 
 &sfr {
-	status = "disabled";
-};
-
-&i2c0 {
 	status = "disabled";
 };
 
