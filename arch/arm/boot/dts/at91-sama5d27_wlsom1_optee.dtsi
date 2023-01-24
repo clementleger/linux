@@ -1,0 +1,34 @@
+// SPDX-License-Identifier: (GPL-2.0+ OR MIT)
+/*
+ * at91-sama5d27_wlsom1_optee.dtsi - Device Tree file for SAMA5D27 WLSOM1 OP-TEE
+ * support.
+ *
+ * Copyright (C) 2023 Microchip Technology Inc. and its subsidiaries
+ *
+ * Author: Clément Léger <clement.leger@bootlin.com>
+ */
+
+&i2c1 {
+	status = "disable";
+	/* We are going to use the regulators provided by the scmi firmware and
+	 * we don't want the label to overlaps */
+	/delete-node/ mcp16502@5b;
+};
+
+&scmi0 {
+	pmic: pmic@17 {
+		reg = <0x17>;
+
+		regulators {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			vdd_3v3: VDD_IO {
+				reg = <0>;
+				regulator-name = "VDD_IO";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <3700000>;
+			};
+		};
+	};
+};
