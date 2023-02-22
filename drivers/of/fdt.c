@@ -33,6 +33,13 @@
 #include "of_private.h"
 
 /*
+ * __dtb_empty_root_begin[] and __dtb_empty_root_end[] magically created by
+ * cmd_dt_S_dtb in scripts/Makefile.lib
+ */
+extern char __dtb_empty_root_begin[];
+extern char __dtb_empty_root_end[];
+
+/*
  * of_fdt_limit_memory - limit the number of regions in the /memory node
  * @limit: maximum entries
  *
@@ -1326,8 +1333,19 @@ bool __init early_init_dt_scan(void *params)
  */
 void __init unflatten_device_tree(void)
 {
-	__unflatten_device_tree(initial_boot_params, NULL, &of_root,
+	if (!initial_boot_params) {
+		initial_boot_params = (void *) __dtb_empty_root_begin;
+		/* fdt_totalsize() will be used for copy size */
+		if (fdt_totalsize(initial_boot_params) >
+		    __dtb_empty_root_end - __dtb_empty_root_begin) {
+			pr_err("invalid size in dtb_empty_root\n");
+			return;
+		}
+		unflatten_and_copy_device_tree();
+	} else {
+		__unflatten_device_tree(initial_boot_params, NULL, &of_root,
 				early_init_dt_alloc_memory_arch, false);
+	}
 
 	/* Get pointer to "/chosen" and "/aliases" nodes for use everywhere */
 	of_alias_scan(early_init_dt_alloc_memory_arch);
@@ -1365,6 +1383,13 @@ void __init unflatten_and_copy_device_tree(void)
 		initial_boot_params = dt;
 	}
 	unflatten_device_tree();
+}
+
+void __init setup_of(void)
+{
+	/* if architecture did not unflatten devicetree, do it now */
+	if (!of_root)
+		unflatten_device_tree();
 }
 
 #ifdef CONFIG_SYSFS

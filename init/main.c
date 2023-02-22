@@ -101,6 +101,7 @@
 #include <linux/init_syscalls.h>
 #include <linux/stackdepot.h>
 #include <linux/randomize_kstack.h>
+#include <linux/of_fdt.h>
 #include <net/net_namespace.h>
 
 #include <asm/io.h>
@@ -961,6 +962,7 @@ asmlinkage __visible void __init __no_sanitize_address start_kernel(void)
 	pr_notice("%s", linux_banner);
 	early_security_init();
 	setup_arch(&command_line);
+	setup_of();
 	setup_boot_config();
 	setup_command_line(command_line);
 	setup_nr_cpu_ids();
