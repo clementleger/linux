@@ -206,6 +206,68 @@ static int of_pci_prop_compatible(struct pci_dev *pdev,
 	return ret;
 }
 
+int of_pci_host_bridge_create_ranges(struct pci_bus *bus,
+				     struct of_changeset *ocs,
+				     struct device_node *np)
+{
+	__be32 ranges[PCI_BRIDGE_RESOURCE_NUM *
+		      (OF_PCI_ADDRESS_CELLS + OF_PCI_SIZE_CELLS + 2)];
+	int range_idx = 0;
+	struct device_node *parent = of_get_parent(bus->dev.of_node);
+	struct resource_entry *window;
+	struct resource *res;
+	struct pci_host_bridge *bridge = to_pci_host_bridge(bus->bridge);
+	u64 val64;
+	u32 flags;
+
+	if (of_n_addr_cells(parent) > 2)
+		return -EINVAL;
+
+	resource_list_for_each_entry(window, &bridge->windows) {
+		res = window->res;
+		if (!(resource_type(res) & IORESOURCE_MEM) &&
+		    !(resource_type(res) & IORESOURCE_MEM_64))
+			continue;
+
+		flags = OF_PCI_ADDR_FIELD_NONRELOC;
+		if (of_pci_get_addr_flags(res, &flags))
+			continue;
+
+		/* PCI bus address */
+		val64 = res->start;
+		of_pci_set_address(&ranges[range_idx], val64, flags);
+		range_idx += OF_PCI_ADDRESS_CELLS;
+
+		/* Root bus address */
+		if (of_n_addr_cells(parent) == 2)
+			ranges[range_idx++] = val64 >> 32;
+		ranges[range_idx++] = val64;
+
+		/* Size */
+		val64 = resource_size(res);
+		of_pci_set_size(&ranges[range_idx], val64);
+		range_idx += OF_PCI_SIZE_CELLS;
+	}
+
+	return of_changeset_add_prop_u32_array(ocs, np, "ranges", (u32 *)ranges,
+					       range_idx);
+}
+
+int of_pci_create_root_bus(struct pci_bus *bus, struct of_changeset *ocs, struct device_node *np)
+{
+	int ret = 0;
+
+	ret |= of_pci_prop_device_type(NULL, ocs, np);
+	ret |= of_pci_prop_address_cells(NULL, ocs, np);
+	ret |= of_pci_prop_size_cells(NULL, ocs, np);
+
+	/*
+	 * The added properties will be released when the
+	 * changeset is destroyed.
+	 */
+	return ret;
+}
+
 int of_pci_add_properties(struct pci_dev *pdev, struct of_changeset *ocs,
 			  struct device_node *np)
 {

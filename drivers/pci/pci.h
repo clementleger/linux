@@ -678,12 +678,23 @@ struct of_changeset;
 
 #ifdef CONFIG_PCI_DYNAMIC_OF_NODES
 void of_pci_make_dev_node(struct pci_dev *pdev);
+void of_pci_update_root_bus_ranges(struct pci_bus *bus);
 void of_pci_remove_node(struct pci_dev *pdev);
 int of_pci_add_properties(struct pci_dev *pdev, struct of_changeset *ocs,
 			  struct device_node *np);
+int of_pci_create_root_bus(struct pci_bus *bus, struct of_changeset *ocs,
+			   struct device_node *np);
+int of_pci_host_bridge_create_ranges(struct pci_bus *bus,
+				     struct of_changeset *ocs,
+				     struct device_node *np);
 #else
 static inline void
 of_pci_make_dev_node(struct pci_dev *pdev)
+{
+}
+
+static inline void
+of_pci_update_root_bus_ranges(struct pci_bus *bus)
 {
 }
 

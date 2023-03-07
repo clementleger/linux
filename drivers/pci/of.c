@@ -15,6 +15,8 @@
 #include <linux/of_pci.h>
 #include "pci.h"
 
+static struct device_node *of_pci_create_root_bus_node(struct pci_bus *bus);
+
 #ifdef CONFIG_PCI
 void pci_set_of_node(struct pci_dev *dev)
 {
@@ -39,6 +41,8 @@ void pci_set_bus_of_node(struct pci_bus *bus)
 
 	if (bus->self == NULL) {
 		node = pcibios_get_phb_of_node(bus);
+		if (!node)
+			node = of_pci_create_root_bus_node(bus);
 	} else {
 		node = of_node_get(bus->self->dev.of_node);
 		if (node && of_property_read_bool(node, "external-facing"))
@@ -668,6 +672,68 @@ failed:
 		of_destroy_node(np);
 	kfree(name);
 }
+
+static struct device_node *of_pci_create_root_bus_node(struct pci_bus *bus)
+{
+	static struct of_changeset *cset;
+	struct device_node *np;
+	int ret;
+
+	if (!of_root) {
+		pr_err("of_root node is NULL, cannot create PCI root bus node");
+		return NULL;
+	}
+
+	np = of_create_node(of_root, "pci", &cset);
+	if (!np)
+		return NULL;
+
+	ret = of_pci_create_root_bus(bus, cset, np);
+	if (ret)
+		goto failed;
+
+	ret = of_changeset_apply(cset);
+	if (ret)
+		goto failed;
+
+	return np;
+
+failed:
+	of_destroy_node(np);
+
+	return NULL;
+}
+
+void of_pci_update_root_bus_ranges(struct pci_bus *bus)
+{
+	static struct of_changeset cset;
+	struct device_node *np = bus->dev.of_node;
+	int ret;
+
+	of_changeset_init(&cset);
+
+	ret = of_pci_host_bridge_create_ranges(bus, &cset, np);
+	if (ret)
+		goto failed;
+
+	ret = of_changeset_apply(&cset);
+	if (ret)
+		goto failed;
+
+	return;
+
+failed:
+	of_changeset_destroy(&cset);
+
+	return;
+}
+#else
+
+static struct device_node *of_pci_create_root_bus_node(struct pci_bus *bus)
+{
+	return NULL;
+}
+
 #endif
 
 #endif /* CONFIG_PCI */
