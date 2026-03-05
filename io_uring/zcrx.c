@@ -590,6 +590,19 @@ static void io_zcrx_return_niov_freelist(struct net_iov *niov)
 	area->freelist[area->free_count++] = net_iov_idx(niov);
 }
 
+static struct net_iov *zcrx_get_free_niov(struct io_zcrx_area *area)
+{
+	unsigned niov_idx;
+
+	lockdep_assert_held(&area->freelist_lock);
+
+	if (unlikely(!area->free_count))
+		return NULL;
+
+	niov_idx = area->freelist[--area->free_count];
+	return &area->nia.niovs[niov_idx];
+}
+
 static void io_zcrx_return_niov(struct net_iov *niov)
 {
 	netmem_ref netmem = net_iov_to_netmem(niov);
@@ -897,16 +910,6 @@ ifq_free:
 	return ret;
 }
 
-static struct net_iov *__io_zcrx_get_free_niov(struct io_zcrx_area *area)
-{
-	unsigned niov_idx;
-
-	lockdep_assert_held(&area->freelist_lock);
-
-	niov_idx = area->freelist[--area->free_count];
-	return &area->nia.niovs[niov_idx];
-}
-
 void io_unregister_zcrx_ifqs(struct io_ring_ctx *ctx)
 {
 	struct io_zcrx_ifq *ifq;
@@ -1013,12 +1016,15 @@ static void io_zcrx_refill_slow(struct page_pool *pp, struct io_zcrx_ifq *ifq)
 
 	guard(spinlock_bh)(&area->freelist_lock);
 
-	while (area->free_count && pp->alloc.count < PP_ALLOC_CACHE_REFILL) {
-		struct net_iov *niov = __io_zcrx_get_free_niov(area);
-		netmem_ref netmem = net_iov_to_netmem(niov);
+	while (pp->alloc.count < PP_ALLOC_CACHE_REFILL) {
+		struct net_iov *niov = zcrx_get_free_niov(area);
+		netmem_ref netmem;
 
+		if (!niov)
+			break;
 		net_mp_niov_set_page_pool(pp, niov);
 		io_zcrx_sync_for_device(pp, niov);
+		netmem = net_iov_to_netmem(niov);
 		net_mp_netmem_place_in_cache(pp, netmem);
 	}
 }
@@ -1243,10 +1249,8 @@ static struct net_iov *io_alloc_fallback_niov(struct io_zcrx_ifq *ifq)
 	if (area->mem.is_dmabuf)
 		return NULL;
 
-	scoped_guard(spinlock_bh, &area->freelist_lock) {
-		if (area->free_count)
-			niov = __io_zcrx_get_free_niov(area);
-	}
+	scoped_guard(spinlock_bh, &area->freelist_lock)
+		niov = zcrx_get_free_niov(area);
 
 	if (niov)
 		page_pool_fragment_netmem(net_iov_to_netmem(niov), 1);
