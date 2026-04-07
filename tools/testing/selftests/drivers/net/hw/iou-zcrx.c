@@ -52,7 +52,26 @@ struct t_io_uring_zcrx_ifq_reg {
 	struct io_uring_zcrx_offsets offsets;
 	__u32	zcrx_id;
 	__u32	rx_buf_len;
-	__u64	__resv[3];
+	__u64	notif_desc;
+	__u64	__resv[2];
+};
+
+#define ZCRX_NOTIF_COPY			(1 << 1)
+#define ZCRX_NOTIF_DESC_FLAG_STATS	(1 << 0)
+
+#define NOTIF_USER_DATA			3
+
+struct t_zcrx_notification_desc {
+	__u64	user_data;
+	__u32	type_mask;
+	__u32	flags;
+	__u64	stats_offset;
+	__u64	__resv2[9];
+};
+
+struct t_io_uring_zcrx_notif_stats {
+	__u64	copy_count;
+	__u64	copy_bytes;
 };
 
 static long page_size;
@@ -85,6 +104,7 @@ static int cfg_send_size = SEND_SIZE;
 static struct sockaddr_in6 cfg_addr;
 static unsigned int cfg_rx_buf_len;
 static bool cfg_dry_run;
+static bool cfg_copy_fallback;
 
 static char *payload;
 static void *area_ptr;
@@ -95,6 +115,8 @@ static unsigned long area_token;
 static int connfd;
 static bool stop;
 static size_t received;
+static unsigned int notif_received_mask;
+static size_t notif_stats_offset;
 
 static unsigned long gettimeofday_ms(void)
 {
@@ -172,6 +194,13 @@ static void setup_zcrx(struct io_uring *ring)
 	}
 
 	ring_size = get_refill_ring_size(rq_entries);
+
+	if (cfg_copy_fallback) {
+		notif_stats_offset = ring_size;
+		ring_size += ALIGN_UP(
+			sizeof(struct t_io_uring_zcrx_notif_stats), page_size);
+	}
+
 	ring_ptr = mmap(NULL,
 			ring_size,
 			PROT_READ | PROT_WRITE,
@@ -191,6 +220,7 @@ static void setup_zcrx(struct io_uring *ring)
 		.flags = 0,
 	};
 
+	struct t_zcrx_notification_desc notif_desc;
 	struct t_io_uring_zcrx_ifq_reg reg = {
 		.if_idx = ifindex,
 		.if_rxq = cfg_queue_id,
@@ -200,10 +230,22 @@ static void setup_zcrx(struct io_uring *ring)
 		.rx_buf_len = cfg_rx_buf_len,
 	};
 
+	if (cfg_copy_fallback) {
+		memset(&notif_desc, 0, sizeof(notif_desc));
+		notif_desc.user_data = NOTIF_USER_DATA;
+		notif_desc.type_mask = ZCRX_NOTIF_COPY;
+		notif_desc.flags = ZCRX_NOTIF_DESC_FLAG_STATS;
+		notif_desc.stats_offset = notif_stats_offset;
+		reg.notif_desc = (__u64)(unsigned long)&notif_desc;
+	}
+
 	ret = io_uring_register_ifq(ring, (void *)&reg);
 	if (cfg_rx_buf_len && (ret == -EINVAL || ret == -EOPNOTSUPP ||
 			       ret == -ERANGE)) {
 		printf("Large chunks are not supported %i\n", ret);
+		exit(SKIP_CODE);
+	} else if (cfg_copy_fallback && ret == -EINVAL) {
+		printf("Copy fallback notifications not supported %i\n", ret);
 		exit(SKIP_CODE);
 	} else if (ret) {
 		error(1, 0, "io_uring_register_ifq(): %d", ret);
@@ -324,6 +366,8 @@ static void server_loop(struct io_uring *ring)
 			process_accept(ring, cqe);
 		else if (cqe->user_data == 2)
 			process_recvzc(ring, cqe);
+		else if (cfg_copy_fallback && cqe->user_data == NOTIF_USER_DATA)
+			notif_received_mask |= cqe->res;
 		else
 			error(1, 0, "unknown cqe");
 		count++;
@@ -374,6 +418,18 @@ static void run_server(void)
 
 	if (!stop)
 		error(1, 0, "test failed\n");
+
+	if (cfg_copy_fallback) {
+		volatile struct t_io_uring_zcrx_notif_stats *stats =
+			(void *)((char *)ring_ptr + notif_stats_offset);
+
+		if (!(notif_received_mask & ZCRX_NOTIF_COPY))
+			error(1, 0, "expected copy fallback notification");
+		if (!stats->copy_count)
+			error(1, 0, "expected copy_count > 0");
+		if (!stats->copy_bytes)
+			error(1, 0, "expected copy_bytes > 0");
+	}
 }
 
 static void run_client(void)
@@ -425,7 +481,7 @@ static void parse_opts(int argc, char **argv)
 		usage(argv[0]);
 	cfg_payload_len = max_payload_len;
 
-	while ((c = getopt(argc, argv, "sch:p:l:i:q:o:z:x:d")) != -1) {
+	while ((c = getopt(argc, argv, "sch:p:l:i:q:o:z:x:dn")) != -1) {
 		switch (c) {
 		case 's':
 			if (cfg_client)
@@ -465,6 +521,9 @@ static void parse_opts(int argc, char **argv)
 			break;
 		case 'd':
 			cfg_dry_run = true;
+			break;
+		case 'n':
+			cfg_copy_fallback = true;
 			break;
 		}
 	}
